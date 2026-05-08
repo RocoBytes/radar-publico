@@ -1,0 +1,90 @@
+# Radar Público — Docker Compose para producción (Digital Ocean Droplet)
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Diferencias con dev:
+# - No expone puertos de postgres/redis al host (solo red interna)
+# - No monta código fuente (usa imagen built)
+# - No incluye Flower ni MailHog
+# - Usa nginx como reverse proxy con TLS
+# - Workers con concurrencia mayor
+
+services:
+  postgres:
+    ports: []
+    restart: always
+
+  redis:
+    ports: []
+    restart: always
+
+  api:
+    build:
+      target: production
+    volumes: []
+    ports: []
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    restart: always
+    command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --access-logfile - --error-logfile -
+
+  worker:
+    build:
+      target: production
+    volumes: []
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+    restart: always
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=8
+
+  beat:
+    build:
+      target: production
+    volumes: []
+    environment:
+      ENVIRONMENT: production
+    restart: always
+
+  web:
+    build:
+      target: production
+    volumes: []
+    ports: []
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      INTERNAL_API_URL: http://api:8000
+    restart: always
+    command: node server.js
+
+  # Flower y MailHog no van a producción
+  flower:
+    profiles: ["never"]
+  mailhog:
+    profiles: ["never"]
+
+  # Reverse proxy con TLS automático (Caddy)
+  proxy:
+    image: caddy:2-alpine
+    container_name: radar_proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+    networks:
+      - radar_net
+
+volumes:
+  caddy_data:
+  caddy_config:

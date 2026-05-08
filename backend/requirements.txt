@@ -1,0 +1,78 @@
+# Radar Público — Backend dependencies (Python 3.12)
+# Generado para FastAPI + Celery + Postgres + IA
+
+# === Web framework ===
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+gunicorn==23.0.0
+python-multipart==0.0.12
+
+# === Validación y settings ===
+pydantic==2.9.2
+pydantic-settings==2.6.0
+
+# === Base de datos ===
+sqlalchemy==2.0.36
+alembic==1.13.3
+asyncpg==0.30.0
+psycopg2-binary==2.9.9
+pgvector==0.3.6
+
+# === Cache y colas ===
+redis==5.1.1
+celery==5.4.0
+celery[redis]==5.4.0
+flower==2.0.1
+
+# === Auth y seguridad ===
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+cryptography==43.0.3
+pyotp==2.9.0
+
+# === HTTP clients ===
+httpx==0.27.2
+tenacity==9.0.0
+aiolimiter==1.1.0
+
+# === IA y embeddings ===
+anthropic==0.39.0
+litellm==1.51.3
+voyageai==0.3.2
+tiktoken==0.8.0
+
+# === Procesamiento de PDFs ===
+pymupdf==1.24.13
+pypdf==5.1.0
+unstructured[pdf]==0.16.5
+python-magic==0.4.27
+
+# === Storage ===
+boto3==1.35.54
+
+# === Notificaciones ===
+resend==2.4.0
+
+# === Scraping ===
+beautifulsoup4==4.12.3
+lxml==5.3.0
+playwright==1.48.0
+
+# === Observabilidad ===
+sentry-sdk[fastapi,celery,sqlalchemy]==2.18.0
+structlog==24.4.0
+
+# === Utilidades ===
+python-dateutil==2.9.0.post0
+pytz==2024.2
+email-validator==2.2.0
+slugify==0.0.1
+python-slugify==8.0.4
+
+# === Dev tools (solo para development target) ===
+pytest==8.3.3
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+ruff==0.7.2
+mypy==1.13.0
+ipython==8.29.0

@@ -1,0 +1,160 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "radar-publico-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+description = "Backend de Radar Público — inteligencia comercial para el Mercado Público de Chile"
+
+
+# ============================================================
+# Ruff — linter + formatter (reemplaza flake8, isort, black)
+# CLAUDE.md §4: ruff check --fix && ruff format antes de commitear
+# ============================================================
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+# Excluir directorios que no son código fuente
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".ruff_cache",
+    "__pycache__",
+    "alembic/versions",  # migraciones autogeneradas
+    "venv",
+    ".venv",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (orden de imports: stdlib → terceros → locales)
+    "N",   # pep8-naming
+    "UP",  # pyupgrade (moderniza syntax de Python)
+    "B",   # flake8-bugbear (bugs comunes)
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking (imports solo en TYPE_CHECKING)
+    "RUF", # ruff-specific rules
+    "ANN", # flake8-annotations (tipos obligatorios — CLAUDE.md §4)
+    "S",   # flake8-bandit (seguridad básica)
+    "PTH", # use pathlib instead of os.path
+]
+ignore = [
+    "ANN101", # tipo en self (redundante)
+    "ANN102", # tipo en cls (redundante)
+    "ANN401", # Any permitido en casos justificados (con comentario)
+    "S101",   # assert permitido en tests
+    "S105",   # posible hardcoded password — falsos positivos en tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+# En tests, relajar algunas reglas
+"app/tests/**/*.py" = [
+    "ANN",  # anotaciones menos estrictas en tests
+    "S",    # seguridad menos estricta en tests
+]
+# En migraciones autogeneradas, ignorar todo
+"alembic/versions/*.py" = ["ALL"]
+
+[tool.ruff.lint.isort]
+# CLAUDE.md §4: imports ordenados stdlib → terceros → locales
+known-first-party = ["app"]
+force-sort-within-sections = true
+
+[tool.ruff.format]
+# Compatibilidad con el estilo de Black
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+
+# ============================================================
+# Mypy — type checker en modo strict
+# CLAUDE.md §4: mypy en modo strict, sin excepciones salvo
+# librerías sin stubs
+# ============================================================
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+# Opciones de strict desglosadas para claridad:
+disallow_untyped_defs = true
+disallow_any_unimported = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+show_error_codes = true
+pretty = true
+
+# Directorios a verificar
+files = ["app"]
+
+# Excluir migraciones autogeneradas
+exclude = ["alembic/versions/"]
+
+# Librerías sin stubs (ignorar su falta de tipos)
+[[tool.mypy.overrides]]
+module = [
+    "celery.*",
+    "redis.*",
+    "asyncpg.*",
+    "pgvector.*",
+    "passlib.*",
+    "jose.*",
+    "structlog.*",
+    "sentry_sdk.*",
+    "litellm.*",
+    "voyageai.*",
+    "anthropic.*",
+    "resend.*",
+    "boto3.*",
+    "botocore.*",
+    "pymupdf.*",
+    "unstructured.*",
+    "playwright.*",
+    "aiolimiter.*",
+]
+ignore_missing_imports = true
+
+
+# ============================================================
+# Pytest
+# ============================================================
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["app/tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "-v",
+]
+markers = [
+    "unit: tests unitarios sin dependencias externas",
+    "integration: tests de integración con Postgres/Redis",
+    "slow: tests lentos (skippear en CI rápido)",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "app/tests/*",
+    "alembic/*",
+]
+
+[tool.coverage.report]
+# CLAUDE.md §7: cobertura mínima 70% en services/
+fail_under = 70
+show_missing = true
+skip_covered = false

@@ -1,0 +1,238 @@
+# Radar Público — Docker Compose (desarrollo local)
+# Levanta todo el stack: postgres+pgvector, redis, backend FastAPI, workers Celery, frontend Next.js
+# Uso:
+#   docker compose up -d        → levanta todo en background
+#   docker compose logs -f api  → sigue logs del backend
+#   docker compose down         → detiene todo (data persiste)
+#   docker compose down -v      → detiene y borra volúmenes (reset total)
+
+services:
+  # ============================================================
+  # Base de datos: Postgres 16 con pgvector
+  # ============================================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: radar_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: radar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-radar_dev_password}
+      POSTGRES_DB: radar
+      # C.UTF-8 siempre disponible en la imagen. El texto en español
+      # se maneja con la configuración es_unaccent definida en schema.sql.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+      - ./schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radar -d radar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - radar_net
+
+  # ============================================================
+  # Redis: cache + broker de Celery
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: radar_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - radar_net
+
+  # ============================================================
+  # Backend API: FastAPI
+  # ============================================================
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: radar_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://radar:${POSTGRES_PASSWORD:-radar_dev_password}@postgres:5432/radar
+      DATABASE_URL_SYNC: postgresql://radar:${POSTGRES_PASSWORD:-radar_dev_password}@postgres:5432/radar
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change_me_32_bytes_long_min____}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      VOYAGE_API_KEY: ${VOYAGE_API_KEY}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      WHATSAPP_PROVIDER_API_KEY: ${WHATSAPP_PROVIDER_API_KEY}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY}
+      R2_SECRET_KEY: ${R2_SECRET_KEY}
+      R2_BUCKET: ${R2_BUCKET:-radar-publico-dev}
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      SENTRY_DSN: ${SENTRY_DSN}
+      ENVIRONMENT: development
+      LOG_LEVEL: DEBUG
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - radar_net
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ============================================================
+  # Worker Celery: tareas asíncronas (sincronización, IA, notificaciones)
+  # ============================================================
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: radar_worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://radar:${POSTGRES_PASSWORD:-radar_dev_password}@postgres:5432/radar
+      DATABASE_URL_SYNC: postgresql://radar:${POSTGRES_PASSWORD:-radar_dev_password}@postgres:5432/radar
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change_me_32_bytes_long_min____}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      VOYAGE_API_KEY: ${VOYAGE_API_KEY}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      WHATSAPP_PROVIDER_API_KEY: ${WHATSAPP_PROVIDER_API_KEY}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY}
+      R2_SECRET_KEY: ${R2_SECRET_KEY}
+      R2_BUCKET: ${R2_BUCKET:-radar-publico-dev}
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - radar_net
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=4
+
+  # ============================================================
+  # Beat Scheduler: cron para Celery
+  # ============================================================
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: radar_beat
+    restart: unless-stopped
+    environment:
+      DATABASE_URL_SYNC: postgresql://radar:${POSTGRES_PASSWORD:-radar_dev_password}@postgres:5432/radar
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENVIRONMENT: development
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - radar_net
+    command: celery -A app.celery_app beat --loglevel=info
+
+  # ============================================================
+  # Flower: UI para monitorear Celery (solo desarrollo)
+  # ============================================================
+  flower:
+    image: mher/flower:2.0
+    container_name: radar_flower
+    restart: unless-stopped
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      FLOWER_PORT: 5555
+      FLOWER_BASIC_AUTH: ${FLOWER_AUTH:-admin:admin}
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    networks:
+      - radar_net
+
+  # ============================================================
+  # Frontend: Next.js
+  # ============================================================
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: radar_web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      INTERNAL_API_URL: http://api:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - radar_net
+    command: npm run dev
+
+  # ============================================================
+  # MailHog: SMTP local de prueba (capturar emails sin enviarlos)
+  # ============================================================
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: radar_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - radar_net
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  radar_net:
+    driver: bridge
