@@ -72,7 +72,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
       JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change_me_32_bytes_long_min____}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change_me_32_bytes_long_min_____}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       VOYAGE_API_KEY: ${VOYAGE_API_KEY}
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
@@ -121,7 +121,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change_me_32_bytes_long_min____}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change_me_32_bytes_long_min_____}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       VOYAGE_API_KEY: ${VOYAGE_API_KEY}
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}

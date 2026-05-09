@@ -3,14 +3,14 @@
 Levanta la API, configura middleware, registra routers.
 """
 
-import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import structlog
 
+from app.api.v1.health import router as health_router
 from app.config import settings
 
 logger = structlog.get_logger()
@@ -45,29 +45,8 @@ app.add_middleware(
 )
 
 
-# === Healthcheck ===
-# Regla de oro #27: /health retorna estado de Postgres, Redis y workers
-@app.get("/health", tags=["sistema"])
-async def health() -> dict[str, object]:
-    """Verificación de salud del sistema.
-
-    Retorna el estado de los componentes críticos.
-    En Sprint 1 se conectará a Postgres y Redis reales.
-    """
-    return {
-        "status": "ok",
-        "timestamp": time.time(),
-        "environment": settings.environment,
-        "version": "0.1.0",
-        "components": {
-            "postgres": "not_checked",
-            "redis": "not_checked",
-            "workers": "not_checked",
-        },
-    }
-
-
-# === Routers (se agregan en Sprint 1+) ===
+# === Routers ===
+app.include_router(health_router)
 # from app.api.v1 import router as v1_router
 # from app.api.admin import router as admin_router
 # app.include_router(v1_router, prefix="/api/v1")

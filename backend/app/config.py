@@ -4,7 +4,7 @@ Todas las variables de entorno se leen desde aquí.
 Nunca importar os.environ directamente en el código de la aplicación.
 """
 
-from pydantic import AnyHttpUrl, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,8 +23,12 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # === Base de datos ===
-    database_url: str = "postgresql+asyncpg://radar:radar_dev_password@localhost:5432/radar"
-    database_url_sync: str = "postgresql://radar:radar_dev_password@localhost:5432/radar"
+    database_url: str = (
+        "postgresql+asyncpg://radar:radar_dev_password@localhost:5432/radar"
+    )
+    database_url_sync: str = (
+        "postgresql://radar:radar_dev_password@localhost:5432/radar"
+    )
 
     # === Redis / Celery ===
     redis_url: str = "redis://localhost:6379/0"
