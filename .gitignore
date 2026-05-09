@@ -155,6 +155,11 @@ storage/
 *.p12
 secrets/
 
+# === Celery ===
+celerybeat-schedule
+celerybeat-schedule.db
+celerybeat.pid
+
 # === Alembic versions: SÍ se commitean ===
 # (no agregar nada aquí)
 

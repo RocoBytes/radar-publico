@@ -19,7 +19,9 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: "package-lock\\.json$"
       - id: end-of-file-fixer
+        exclude: "package-lock\\.json$"
       - id: check-yaml
       - id: check-json
       - id: check-toml

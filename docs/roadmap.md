@@ -26,7 +26,6 @@
 - [ ] Repo Git inicializado con estructura de carpetas (sección 3 del CLAUDE.md).
 - [ ] Docker Compose levantando: postgres, redis, api (hello world), worker (hello world), web (Next.js inicial).
 - [ ] Schema inicial cargado en Postgres desde `schema.sql`.
-- [ ] Catálogos seed cargados: regiones, comunas, UNSPSC.
 - [ ] Variables de entorno documentadas en `.env.example` y `.env` local funcional.
 - [ ] Pre-commit hooks configurados (ruff, mypy, eslint, gitleaks).
 - [ ] CI básico en GitHub Actions: corre tests y linters en cada PR.
@@ -154,6 +153,11 @@
 - US-5.4 Resultados paginados
 
 **Tareas backend:**
+- [ ] **Catálogos seed:** cargar regiones, comunas y UNSPSC desde fuentes oficiales.
+  - Regiones y comunas: dataset oficial INE / SUBDERE.
+  - UNSPSC: catálogo oficial en español. Validar al momento de carga qué versión usa ChileCompra (probablemente v14, pero confirmar contra ejemplos reales de licitaciones).
+  - Validar codificación UTF-8 y estructura jerárquica (segmento → familia → clase → commodity, niveles 2/4/6/8 dígitos).
+  - Script idempotente: re-ejecutarlo no duplica filas.
 - [ ] Endpoints CRUD de empresa: `GET/PATCH /api/v1/empresas/me`.
 - [ ] Endpoints de intereses: `GET/POST/DELETE /api/v1/intereses`.
 - [ ] Endpoint de validación de RUT chileno (algoritmo dígito verificador).
@@ -510,4 +514,12 @@ A partir del sprint 9 entra v2 según el spec. Las prioridades dependerán del f
 
 ---
 
-*Este roadmap se revisa al cierre de cada sprint. Última revisión: 2026-05-07.*
+*Este roadmap se revisa al cierre de cada sprint. Última revisión: 2026-05-09.*
+
+---
+
+## Retrospectiva Sprint 0
+
+- Catálogos seed (regiones, comunas, UNSPSC) reasignados a Sprint 3 por just-in-time data loading: cargarlos antes de necesitarlos genera riesgo de retrabajo si la estructura no calza con el consumidor real.
+- Locale del contenedor postgres ajustado a `C.UTF-8` por incompatibilidad de la imagen oficial con `es_CL.UTF-8`. Búsqueda en español funciona igual gracias a la text search configuration `es_unaccent` del schema.
+- `package-lock.json` del frontend generado con `--package-lock-only` desde el host y commiteado. Builds ahora reproducibles con `npm ci`.

@@ -88,6 +88,7 @@ services:
       CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
     volumes:
       - ./backend:/app
+      - /app/.venv  # volumen anónimo: preserva el venv construido en la imagen
     ports:
       - "8000:8000"
     depends_on:
@@ -134,6 +135,7 @@ services:
       LOG_LEVEL: INFO
     volumes:
       - ./backend:/app
+      - /app/.venv  # volumen anónimo: preserva el venv construido en la imagen
     depends_on:
       postgres:
         condition: service_healthy
@@ -160,6 +162,7 @@ services:
       ENVIRONMENT: development
     volumes:
       - ./backend:/app
+      - /app/.venv  # volumen anónimo: preserva el venv construido en la imagen
     depends_on:
       postgres:
         condition: service_healthy

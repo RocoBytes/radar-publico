@@ -55,20 +55,17 @@ RUN if [ -f poetry.lock ]; then \
 # ============================================================
 FROM base AS development
 
+# Copiar el venv ya construido con todas las dependencias
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Dev dependencies adicionales
-RUN if [ -f /app/pyproject.toml ]; then \
-        pip install poetry==1.8.3 && \
-        poetry install --no-root; \
-    fi
-
+# El código fuente se monta como volumen en docker-compose,
+# pero copiamos aquí para que la imagen sea self-contained
 COPY . .
 
 EXPOSE 8000
 
-# El comando real viene del docker-compose
+# El comando real viene del docker-compose (uvicorn o celery)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # ============================================================

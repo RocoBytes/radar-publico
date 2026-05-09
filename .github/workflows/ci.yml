@@ -88,7 +88,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Instalar dependencias
-        run: npm ci --prefer-offline
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
       - name: ESLint
@@ -117,7 +117,8 @@ jobs:
           cache-dependency-path: frontend-admin/package-lock.json
 
       - name: Instalar dependencias
-        run: npm ci --prefer-offline
+        # frontend-admin no tiene lockfile hasta que se agregue su servicio Docker (Sprint 6)
+        run: npm install --legacy-peer-deps
         working-directory: frontend-admin
 
       - name: ESLint
