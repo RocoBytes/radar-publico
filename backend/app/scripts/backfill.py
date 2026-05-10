@@ -238,7 +238,24 @@ async def run_backfill(meses: int, dry_run: bool) -> None:
 
     logger.info("backfill_start", meses=meses, dry_run=dry_run)
 
-    # Obtener ticket activo
+    # Generar lista de fechas
+    fechas = _fechas_a_procesar(meses)
+    total_fechas = len(fechas)
+
+    logger.info("backfill_fechas_a_procesar", total=total_fechas, dry_run=dry_run)
+
+    if dry_run:
+        print(f"DRY RUN — Fechas a procesar: {total_fechas}")
+        print(f"  Desde: {fechas[-1]} hasta: {fechas[0]}")
+        print(f"  Cuota estimada: {total_fechas} requests (1 por fecha)")
+        print(
+            "  NOTA: Datos Abiertos de ChileCompra no tiene CSVs de descarga directa.\n"
+            "  El backfill usa la API oficial (cuota 10K req/día por ticket).\n"
+            "  Ejecutar en horario nocturno (22:00-07:00 CLT) — regla de oro #17."
+        )
+        return
+
+    # Obtener ticket activo (no se necesita en dry-run)
     async with AsyncSessionLocal() as session:
         ticket_info = await _get_ticket_activo(session)
 
@@ -266,23 +283,6 @@ async def run_backfill(meses: int, dry_run: bool) -> None:
     except ValueError:
         empresa_id_uuid = None
         ticket_id_uuid = None
-
-    # Generar lista de fechas
-    fechas = _fechas_a_procesar(meses)
-    total_fechas = len(fechas)
-
-    logger.info("backfill_fechas_a_procesar", total=total_fechas, dry_run=dry_run)
-
-    if dry_run:
-        print(f"DRY RUN — Fechas a procesar: {total_fechas}")
-        print(f"  Desde: {fechas[-1]} hasta: {fechas[0]}")
-        print(f"  Cuota estimada: {total_fechas} requests (1 por fecha)")
-        print(
-            "  NOTA: Datos Abiertos de ChileCompra no tiene CSVs de descarga directa.\n"
-            "  El backfill usa la API oficial (cuota 10K req/día por ticket).\n"
-            "  Ejecutar en horario nocturno (22:00-07:00 CLT) — regla de oro #17."
-        )
-        return
 
     # Acumuladores de estadísticas
     total: dict[str, int] = {
