@@ -12,6 +12,7 @@ Marcado como @pytest.mark.integration para correr selectivamente:
   pytest -m integration
 """
 
+from collections.abc import AsyncGenerator
 import uuid
 
 import pytest
@@ -30,8 +31,8 @@ TICKET_PUBLICO = "F8537A18-6766-4DEF-9E59-426B4FEE2844"
 pytestmark = pytest.mark.integration
 
 
-@pytest_asyncio.fixture(scope="module")
-async def empresa_prueba() -> dict[str, str]:
+@pytest_asyncio.fixture(scope="function")
+async def empresa_prueba() -> AsyncGenerator[dict[str, str], None]:
     """Crea un usuario + empresa + ticket de prueba en la BD, los limpia al final."""
     async with AsyncSessionLocal() as session:
         usuario = Usuario(
@@ -46,7 +47,7 @@ async def empresa_prueba() -> dict[str, str]:
 
         empresa = Empresa(
             usuario_id=usuario.id,
-            rut="76.000.001-K",
+            rut=f"76.{uuid.uuid4().int % 999_999:06d}-K",
             razon_social="Empresa Test Integración SpA",
             regiones_operacion=["Metropolitana de Santiago"],
             tamano=EmpresaTamano.pequena,
@@ -74,9 +75,11 @@ async def empresa_prueba() -> dict[str, str]:
 
     # Cleanup
     async with AsyncSessionLocal() as session:
-        usuario = await session.get(Usuario, uuid.UUID(ids["usuario_id"]))
-        if usuario:
-            await session.delete(usuario)
+        usuario_cleanup: Usuario | None = await session.get(
+            Usuario, uuid.UUID(ids["usuario_id"])
+        )
+        if usuario_cleanup is not None:
+            await session.delete(usuario_cleanup)
             await session.commit()
 
 
@@ -219,17 +222,16 @@ async def test_api_quota_log_se_persiste(empresa_prueba: dict[str, str]) -> None
         assert ticket_obj is not None
         ticket_plaintext = decrypt_ticket(ticket_obj.ticket_cifrado)
 
+    from sqlalchemy import func
+
     # Contar logs antes
     async with AsyncSessionLocal() as session:
-        count_antes = (
+        count_antes_raw = (
             await session.execute(
-                select(text("count(*)"))
-                .select_from(ApiQuotaLog.__table__)
-                .where(  # type: ignore[attr-defined]
-                    ApiQuotaLog.ticket_id == ticket_id
-                )
+                select(func.count()).where(ApiQuotaLog.ticket_id == ticket_id)
             )
-        ).scalar() or 0
+        ).scalar()
+    count_antes = count_antes_raw or 0
 
     async with MercadoPublicoClient() as client:
         await client.listar_licitaciones_por_estado(
@@ -243,14 +245,11 @@ async def test_api_quota_log_se_persiste(empresa_prueba: dict[str, str]) -> None
 
     # Debe haber al menos 1 log nuevo
     async with AsyncSessionLocal() as session:
-        count_despues = (
+        count_despues_raw = (
             await session.execute(
-                select(text("count(*)"))
-                .select_from(ApiQuotaLog.__table__)
-                .where(  # type: ignore[attr-defined]
-                    ApiQuotaLog.ticket_id == ticket_id
-                )
+                select(func.count()).where(ApiQuotaLog.ticket_id == ticket_id)
             )
-        ).scalar() or 0
+        ).scalar()
+    count_despues = count_despues_raw or 0
 
     assert count_despues > count_antes, "El request no se registró en api_quota_log"

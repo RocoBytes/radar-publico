@@ -41,7 +41,9 @@ async def _check_redis() -> tuple[ComponentStatus, str | None]:
 
         from app.config import settings
 
-        client = aioredis.from_url(settings.redis_url, socket_timeout=2.0)
+        client = aioredis.from_url(  # type: ignore[no-untyped-call]
+            settings.redis_url, socket_timeout=2.0
+        )
         await client.ping()
         await client.aclose()
         return "ok", None

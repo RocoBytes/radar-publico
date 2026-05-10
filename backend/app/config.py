@@ -40,7 +40,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
+    password_reset_token_expire_minutes: int = 30
     encryption_key: str = "change_me_32_bytes_long_min____"
+
+    # === Email (SMTP) ===
+    smtp_host: str = "mailhog"
+    smtp_port: int = 1025
+    email_from: str = "alertas@radarpublico.cl"
 
     # === CORS ===
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"

@@ -9,6 +9,7 @@ Casos cubiertos:
 - 404 (lista vacía) → LicitacionNoEncontradaError.
 """
 
+from collections.abc import Generator
 from datetime import date
 from unittest.mock import AsyncMock, patch
 
@@ -91,7 +92,7 @@ DETALLE_RESPONSE = {
 
 
 @pytest.fixture
-def mock_log() -> None:  # type: ignore[return]
+def mock_log() -> Generator[None, None, None]:
     """Mockea el logging a BD para tests unitarios."""
     with patch(
         "app.services.chilecompra.client.MercadoPublicoClient._log_request",

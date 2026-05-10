@@ -6,6 +6,7 @@ app/core/auth.py — tarea separada de Sprint 1.
 """
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 import uuid
 
 from sqlalchemy import Boolean, DateTime, Enum, Index, Integer, String, text
@@ -14,6 +15,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import UserRole, UserStatus
+
+if TYPE_CHECKING:
+    from app.models.empresa import Empresa
+    from app.models.password_reset import PasswordResetToken
+    from app.models.refresh_token import RefreshToken
 
 
 class Usuario(Base):
@@ -74,11 +80,21 @@ class Usuario(Base):
         DateTime(timezone=True), nullable=True
     )
 
-    # Relación bidireccional con Empresa (1:1)
-    empresa: Mapped["Empresa | None"] = relationship(  # type: ignore[name-defined]  # noqa: F821
+    # Relaciones
+    empresa: Mapped["Empresa | None"] = relationship(
         "Empresa",
         back_populates="usuario",
         uselist=False,
+        cascade="all, delete-orphan",
+    )
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        "RefreshToken",
+        back_populates="usuario",
+        cascade="all, delete-orphan",
+    )
+    password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
+        "PasswordResetToken",
+        back_populates="usuario",
         cascade="all, delete-orphan",
     )
 

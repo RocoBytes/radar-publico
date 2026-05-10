@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
+from app.api.v1 import router as v1_router
 from app.api.v1.health import router as health_router
 from app.config import settings
 
@@ -46,8 +47,7 @@ app.add_middleware(
 
 
 # === Routers ===
+# /health en root para el healthcheck de Docker Compose (docker-compose.yml:100)
 app.include_router(health_router)
-# from app.api.v1 import router as v1_router
-# from app.api.admin import router as admin_router
-# app.include_router(v1_router, prefix="/api/v1")
-# app.include_router(admin_router, prefix="/api/admin")
+# /api/v1/* incluye health + auth
+app.include_router(v1_router, prefix="/api/v1")

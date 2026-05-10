@@ -11,8 +11,8 @@ import asyncio
 from datetime import UTC, datetime
 import hashlib
 import json
+from typing import Any
 
-from celery import Task
 import structlog
 
 from app.celery_app import celery_app
@@ -172,14 +172,14 @@ async def _sync_empresa(
     return stats
 
 
-@celery_app.task(
+@celery_app.task(  # type: ignore[misc]
     name="tasks.sync_chilecompra.sync_listado_diario",
     bind=True,
     max_retries=3,
     default_retry_delay=300,  # 5 minutos entre reintentos
     acks_late=True,
 )
-def sync_listado_diario(self: Task) -> dict[str, object]:
+def sync_listado_diario(self: Any) -> dict[str, object]:  # Task sin stubs
     """Sincroniza las licitaciones activas de hoy para TODAS las empresas.
 
     Regla de oro #29: idempotente — re-ejecutar no duplica registros.

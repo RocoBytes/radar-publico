@@ -124,7 +124,7 @@ class LicitacionDetalleAPI(BaseModel):
         """La API devuelve 0/1 como int. Lo normalizamos para el modelo."""
         if v is None:
             return None
-        return int(v)  # type: ignore[call-overload]
+        return int(str(v))
 
 
 class LicitacionListItemAPI(BaseModel):

@@ -56,7 +56,7 @@ class Empresa(Base):
     nombre_fantasia: Mapped[str | None] = mapped_column(String(255), nullable=True)
     giros: Mapped[list[str] | None] = mapped_column(
         ARRAY(Text),
-        nullable=True,  # type: ignore[type-arg]
+        nullable=True,
     )
     tamano: Mapped[EmpresaTamano | None] = mapped_column(
         Enum(EmpresaTamano, name="empresa_tamano", create_type=False), nullable=True
@@ -66,13 +66,13 @@ class Empresa(Base):
 
     # Cobertura geográfica (arrays de texto — catálogos cerrados)
     regiones_operacion: Mapped[list[str]] = mapped_column(
-        ARRAY(Text),  # type: ignore[type-arg]
+        ARRAY(Text),
         nullable=False,
         server_default="{}",
     )
     comunas_operacion: Mapped[list[str] | None] = mapped_column(
         ARRAY(Text),
-        nullable=True,  # type: ignore[type-arg]
+        nullable=True,
     )
 
     # Flags de perfil

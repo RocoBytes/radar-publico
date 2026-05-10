@@ -4,17 +4,18 @@ Lee DATABASE_URL_SYNC desde las variables de entorno (no desde config.py
 para evitar importar la app completa durante las migraciones).
 """
 
-import os
 from logging.config import fileConfig
+import os
+
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
 
 # Importar Base para que Alembic detecte los modelos automáticamente
 # Se van agregando los modelos aquí cuando se creen en Sprint 1+
-from app.db.base import Base  # noqa: F401
+from app.db.base import Base
 
-# import app.models  # noqa: F401  ← descomentar cuando existan modelos
+# import app.models
 
 config = context.config
 

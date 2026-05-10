@@ -4,7 +4,7 @@ CLAUDE.md §9 — trampa #1: formato de fecha ddmmaaaa sin separadores.
 Usar SIEMPRE format_fecha_api() para construir fechas en queries.
 """
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 import re
 
 
@@ -47,9 +47,9 @@ def parse_fecha_iso(fecha_str: str | None) -> datetime | None:
     if not fecha_str:
         return None
 
-    import pytz
+    # timezone.utc de stdlib — sin dependencias externas
 
-    utc = pytz.UTC
+    utc = UTC
 
     # Intentar varios formatos que devuelve la API
     formatos = [
@@ -61,7 +61,7 @@ def parse_fecha_iso(fecha_str: str | None) -> datetime | None:
     for fmt in formatos:
         try:
             dt = datetime.strptime(fecha_str, fmt)
-            return utc.localize(dt)
+            return dt.replace(tzinfo=utc)
         except ValueError:
             continue
 
