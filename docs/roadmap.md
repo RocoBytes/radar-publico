@@ -514,7 +514,7 @@ A partir del sprint 9 entra v2 según el spec. Las prioridades dependerán del f
 
 ---
 
-*Este roadmap se revisa al cierre de cada sprint. Última revisión: 2026-05-09.*
+*Este roadmap se revisa al cierre de cada sprint. Última revisión: 2026-05-10.*
 
 ---
 
@@ -523,3 +523,70 @@ A partir del sprint 9 entra v2 según el spec. Las prioridades dependerán del f
 - Catálogos seed (regiones, comunas, UNSPSC) reasignados a Sprint 3 por just-in-time data loading: cargarlos antes de necesitarlos genera riesgo de retrabajo si la estructura no calza con el consumidor real.
 - Locale del contenedor postgres ajustado a `C.UTF-8` por incompatibilidad de la imagen oficial con `es_CL.UTF-8`. Búsqueda en español funciona igual gracias a la text search configuration `es_unaccent` del schema.
 - `package-lock.json` del frontend generado con `--package-lock-only` desde el host y commiteado. Builds ahora reproducibles con `npm ci`.
+
+---
+
+## Retrospectiva Sprint 1
+
+**Fecha de cierre:** 2026-05-10
+
+### Qué se completó
+
+**Backend:**
+- ✅ US-2.1 Login — endpoint `POST /api/v1/auth/login` con rate limiting (5 intentos/15 min por IP), JWT access token (15 min) + refresh token rotativo (7 días).
+- ✅ US-2.2 Logout — endpoint `POST /api/v1/auth/logout`, invalida refresh token en BD.
+- ✅ US-2.4 Cambiar contraseña — endpoint `POST /api/v1/auth/change-password`, valida política (10+, mayúscula, minúscula, dígito), invalida todas las sesiones excepto la actual.
+- ✅ US-1.1 (parcial) Crear cuenta de proveedor vía CLI — `python -m app.scripts.create_user`.
+- ✅ Modelos SQLAlchemy: `usuarios`, `empresas`, `tickets_api`, `refresh_tokens`, `licitaciones`, `api_quota_log`.
+- ✅ Helpers de seguridad: bcrypt cost 12, JWT con tipos (access/refresh), AES-256-GCM para tickets.
+- ✅ Middleware de autenticación con dependencias FastAPI (`CurrentUser`).
+- ✅ Rate limiting en `/login` y `/forgot-password` vía Redis.
+- ✅ Cliente HTTP ChileCompra (`MercadoPublicoClient`): rate limit 5 req/s, retries tenacity, backoff exponencial, logging a `api_quota_log`. Validado contra la API real.
+- ✅ Worker Celery `sync_listado_diario`: sincroniza licitaciones activas para todas las empresas con ticket activo. Beat schedule cada 15 minutos.
+- ✅ Endpoints adicionales: `GET /api/v1/auth/me`, `POST /api/v1/auth/refresh`, `/health`.
+- ✅ Script de backfill histórico `python -m app.scripts.backfill` — implementado, tests unitarios pasan, listo para ejecución nocturna.
+- ✅ 90 tests pasando (unitarios + integración). 1 error de setup en asyncpg pre-existente (documentado, no es regresión).
+
+**Frontend:**
+- ✅ Setup Next.js 15 con TypeScript strict, TailwindCSS 3, shadcn/ui (manual), TanStack Query 5, React Hook Form, Zod.
+- ✅ Estrategia de cookies httpOnly via Route Handler proxy (`/api/auth/*` en Next.js).
+- ✅ Cliente HTTP tipado `src/lib/api.ts` con interceptor de refresh automático ante 401.
+- ✅ Página `/login` — validación RHF + Zod, 3 estados (idle/loading/error), mensaje genérico "Credenciales inválidas".
+- ✅ Página `/change-password` — política regex cliente, validación de confirmación, toast de éxito.
+- ✅ Layout protegido `(dashboard)/layout.tsx` — Server Component, valida sesión y `must_change_password`.
+- ✅ Página `/dashboard` — Server Component, muestra `razon_social`, botón "Cerrar sesión".
+- ✅ Lint y typecheck limpios (`No ESLint warnings or errors`, `tsc --noEmit` sin errores).
+
+### Qué quedó pendiente
+
+- **Backfill 100K licitaciones:** diferido. La BD tiene 4.321 licitaciones (activas al momento del worker). No se alcanzó el criterio de >100K porque los CSVs de Datos Abiertos de ChileCompra no tienen descarga directa pública (ver sección de lecciones aprendidas). El script de backfill está implementado y listo; la ejecución completa requiere un ticket activo y debe hacerse en horario nocturno. Movido a **inicio de Sprint 2** como tarea operacional antes de arrancar con el detalle de licitaciones.
+- **Backfill desde Datos Abiertos (regla 16):** aplazado indefinidamente — los CSVs anuales no están disponibles para descarga pública. La estrategia alternativa confirmada es backfill por la API por fecha (1 req/fecha, respetando cuota diaria).
+- **`forgot-password` / `reset-password` UI:** fuera de alcance Sprint 1 (Sprint 5 según roadmap). Backend implementado, frontend pendiente.
+
+### Lecciones aprendidas
+
+1. **shadcn/ui CLI no es no-interactivo en Docker:** `npx shadcn@latest init --yes` siempre abre un selector interactivo (Radix vs Base) que no se puede skipear con flags. La solución es crear `components.json` manualmente y copiar los componentes desde la docs oficial. Para agregar componentes posteriores, `npx shadcn@latest add <componente> --yes` sí funciona una vez que existe el archivo de configuración.
+
+2. **Cookies httpOnly cross-origin requieren Route Handler proxy en Next.js:** Con backend en `:8000` y frontend en `:3000`, los navegadores modernos bloquean `Set-Cookie` con `SameSite=Lax` en respuestas cross-origin. La solución es exponer `/api/auth/*` como Route Handlers en Next.js: el browser llama al mismo origen (`:3000`), el Route Handler llama al backend interno vía `INTERNAL_API_URL` (red Docker), y setea las cookies httpOnly del lado del servidor. Este patrón es la fuente de verdad para toda la autenticación del proyecto.
+
+3. **Tests de integración FastAPI + asyncpg con pytest-asyncio requieren NullPool:** Si se usa `QueuePool` (default de SQLAlchemy), pytest-asyncio crea un event loop nuevo por cada test y las conexiones previas quedan adjuntas a un loop diferente, produciendo `RuntimeError: Future attached to a different loop`. La solución es `NullPool` en el engine de test y un patch del módulo de sesión para que los tests usen la sesión sobreescrita. Este patrón está codificado en `conftest.py` y debe replicarse en tests futuros.
+
+4. **datos-abiertos.chilecompra.cl no expone CSVs históricos de licitaciones para descarga pública:** El portal es una SPA React que sirve visualizaciones analíticas via API REST (`mserv-datos-abiertos.chilecompra.cl`). Las "descargas" disponibles son por organismo específico, no dumps anuales masivos. El API real no tiene un endpoint de catálogo de archivos accesible sin autenticación de sesión. La regla de oro #16 sigue siendo válida en su intención (no usar la API de mercadopublico.cl para backfill), pero la fuente alternativa documentada es la API oficial por fecha.
+
+5. **Celery `include` requiere restart limpio del worker:** Si el módulo de tareas ya fue importado en el proceso del worker (por ejemplo, por `inspect registered`), Celery lo registra en memoria pero el proceso principal no lo lista en `[tasks]` al arrancar. Un `docker compose restart worker beat` garantiza un estado limpio. El síntoma de tareas ausentes en `[tasks]` es el diagnóstico correcto; el fix es siempre el restart.
+
+### Validación del riesgo técnico mayor
+
+- **Sincronización con ChileCompra:** ✅ Validada sin saturar la cuota. Consumo total del sprint: **7 requests** sobre 10.000/día disponibles. El worker ejecuta correctamente (probado manualmente y vía beat schedule). El rate limiter interno (5 req/s) y los retries con backoff exponencial funcionan según lo diseñado.
+- **Cuota diaria:** Consumo en todo el sprint: 7 requests. Cuota disponible: 10.000/día por ticket. Riesgo de saturación: bajo.
+
+### Preparación para Sprint 2
+
+- **Volumen actual en BD:** 4.321 licitaciones (estado: publicada, sin detalle completo).
+- **Prerequisitos de Sprint 2 ya en pie:**
+  - Cliente HTTP ChileCompra con soporte para `obtener_detalle_licitacion()`.
+  - Modelos SQLAlchemy para `licitacion_items`, `criterios_evaluacion`, `licitacion_fechas` y `documentos_bases` (definidos en `schema.sql`, pendientes de mapear en SQLAlchemy).
+  - Worker Celery corriendo y probado.
+  - Autenticación end-to-end funcional (login → dashboard → logout).
+  - BD con estructura para `documentos_bases`, `documento_chunks` y `embedding` (pgvector).
+- **Tarea operacional pre-Sprint 2:** correr backfill nocturno `python -m app.scripts.backfill --months 6` para alcanzar volumen suficiente antes de arrancar el worker de detalle.
