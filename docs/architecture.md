@@ -129,3 +129,60 @@ El backfill completo de 2 años cabe en una única noche sin comprometer la sinc
 | CSVs de Datos Abiertos | No existen con descarga pública para licitaciones |
 | Scraping del portal Mercado Público | Viola TOS, riesgo de bloqueo, complejidad innecesaria para datos que la API sí entrega |
 | Comprar datos históricos a terceros | Sin proveedores conocidos confiables; costo injustificado |
+
+---
+
+## ADR-004: Sincronización de detalle — trigger, política de caché y manejo de 404
+
+**Estado:** Aceptado  
+**Fecha:** 2026-05-11  
+**Sprint:** 2
+
+### Contexto
+
+El patrón obligatorio de ChileCompra es **lista → detalle**: la sincronización diaria trae
+info básica (código, nombre, estado, fecha de cierre) de cada licitación activa. El detalle
+completo (descripción, organismo, monto, items, criterios de evaluación, calendario de fechas)
+requiere una segunda llamada por código.
+
+Sprint 2 implementa esa segunda llamada como tarea Celery independiente. Había que decidir:
+1. **Cuándo disparar** la sincronización de detalle.
+2. **Cuándo omitir** el detalle ya sincronizado (evitar cuota innecesaria — regla de oro #21).
+3. **Qué hacer con 404** (licitación ya no existe en ChileCompra).
+
+### Decisión
+
+**Trigger:** `sync_listado_diario` encola `sync_detalle_licitacion.delay(codigo)` inmediatamente
+tras cada licitación nueva o cuyo hash haya cambiado. No bloquea — el detalle se procesa en background.
+Las licitaciones sin cambio NO se encolan (regla de oro #21 — cache agresivo).
+
+Cuando `sync_listado_diario` detecta un hash cambiado en una licitación existente, setea
+`detalle_sincronizado_at = NULL` antes de encolar, forzando que `sync_detalle_licitacion`
+re-sincronice el detalle aunque `detalle_sincronizado_at` hubiera estado poblado.
+
+**Política de caché en `sync_detalle_licitacion`:** si `detalle_sincronizado_at` ya está
+poblado → retornar `sin_cambio` sin llamar a la API. Si `NULL` (nueva o hash cambiado desde
+el listado) → sincronizar.
+
+**Política 404:** loguear `no_encontrada=1`, no elevar excepción, dejar `detalle_sincronizado_at`
+en NULL. El 404 es semántico (licitación revocada/eliminada) — no es un error transitorio que
+justifique reintentos automáticos.
+
+### Consecuencias
+
+**Positivas:**
+- Cuota controlada: solo se consulta el detalle cuando hay algo nuevo que sincronizar.
+- La tarea es idempotente: delete + insert para items (en lugar de upsert parcial), upsert por tipo para fechas.
+- 404 silencioso evita colas de reintentos para licitaciones que nunca se recuperarán.
+
+**Negativas:**
+- Un hash del listado puede no capturar cambios en el detalle (ej: cambio en items sin cambio de nombre/estado). Se acepta como trade-off; la siguiente sincronización de listado que detecte cambio de estado forzará un nuevo detalle.
+- `unspsc_codigos` debe existir en la BD antes de insertar items con `CodigoProducto` válido. Si no existe, la FK falla silenciosamente en tests unitarios (se usa `CodigoProducto=None` en mocks).
+
+### Alternativas descartadas
+
+| Alternativa | Motivo de descarte |
+|---|---|
+| Trigger por schedule propio (cada N minutos) | Consumo de cuota no controlado; consulta el detalle aunque no haya cambios |
+| Agregar en el mismo archivo `sync_chilecompra.py` | Sin precedente de múltiples tareas por archivo en el repo; `celery_app.py` ya reservaba `app.tasks.sync_detalle` |
+| Upsert parcial para items (INSERT ON CONFLICT UPDATE) | La lista de items puede cambiar en largo y posición; delete + insert es más correcto y simple |
