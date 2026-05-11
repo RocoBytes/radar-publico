@@ -25,6 +25,11 @@ from app.services.chilecompra.exceptions import (
     TicketInvalidoError,
 )
 
+# Importación tardía para evitar circularidad (sync_detalle importa celery_app,
+# que a su vez importa este módulo vía include). Se usa el string name como
+# alternativa segura.
+_SYNC_DETALLE_TASK_NAME = "tasks.sync_detalle.sync_detalle_licitacion"
+
 logger = structlog.get_logger()
 
 
@@ -54,7 +59,7 @@ async def _sync_empresa(
     from app.db.session import AsyncSessionLocal
     from app.models.licitacion import Licitacion
 
-    stats = {"nuevas": 0, "sin_cambio": 0, "errores": 0}
+    stats = {"nuevas": 0, "actualizadas": 0, "sin_cambio": 0, "errores": 0}
 
     # Descifrar ticket solo en memoria — NUNCA loggear ni persistir
     try:
@@ -104,7 +109,16 @@ async def _sync_empresa(
                         existing.estado_codigo = item.CodigoEstado
                         existing.fecha_cierre = item.FechaCierre
                         existing.hash_contenido = nuevo_hash
+                        # Marcar detalle como pendiente — el hash cambió,
+                        # los items/criterios pueden diferir.
+                        existing.detalle_sincronizado_at = None
                         existing.updated_at = datetime.now(UTC)
+                        stats["actualizadas"] += 1
+                        # Encolar detalle en background — no bloquear
+                        celery_app.send_task(
+                            _SYNC_DETALLE_TASK_NAME,
+                            args=[item.CodigoExterno],
+                        )
                     else:
                         # Nueva licitación — solo info básica del listado
                         estado_enum = EstadoLicitacion.from_codigo(
@@ -121,6 +135,11 @@ async def _sync_empresa(
                         )
                         session.add(licitacion)
                         stats["nuevas"] += 1
+                        # Encolar detalle en background — no bloquear
+                        celery_app.send_task(
+                            _SYNC_DETALLE_TASK_NAME,
+                            args=[item.CodigoExterno],
+                        )
 
                 except Exception as e:
                     logger.error(
@@ -209,7 +228,12 @@ def sync_listado_diario(self: Any) -> dict[str, object]:  # Task sin stubs
             logger.info("sync_listado_diario_no_tickets")
             return {"empresas": 0, "total": {}}
 
-        total: dict[str, int] = {"nuevas": 0, "sin_cambio": 0, "errores": 0}
+        total: dict[str, int] = {
+            "nuevas": 0,
+            "actualizadas": 0,
+            "sin_cambio": 0,
+            "errores": 0,
+        }
         for empresa_id, ticket_cifrado, ticket_id, ultimos_4 in tickets:
             stats = await _sync_empresa(
                 empresa_id=str(empresa_id),
