@@ -14,7 +14,8 @@ celery_app = Celery(
     backend=settings.celery_result_backend,
     include=[
         "app.tasks.sync_chilecompra",
-        # Sprint 2+:
+        "app.tasks.sync_detalle",  # Sprint 2: detalle de licitaciones
+        # Sprint 3+:
         # "app.tasks.embeddings",
         # "app.tasks.notifications",
     ],
