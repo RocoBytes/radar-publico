@@ -69,6 +69,35 @@ EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # ============================================================
+# Playwright: worker de scraping con browsers Chromium instalados.
+# Usa la imagen oficial de Playwright para evitar lidiar con libs nativas
+# (libnss3, libatk-bridge2.0-0, libxkbcommon0, libdrm2, etc.) en slim.
+# Imagen ~1.5 GB — solo se usa para el servicio worker_scraper.
+# ============================================================
+FROM mcr.microsoft.com/playwright/python:v1.48.0-jammy AS playwright
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Deps adicionales del sistema que la imagen base de Playwright no incluye
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    libmagic1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Reutilizar el venv construido en builder (deps Python idénticas)
+COPY --from=builder /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+COPY . .
+
+CMD ["celery", "-A", "app.celery_app", "worker", "-Q", "scraping", "--concurrency=2", "--loglevel=info"]
+
+# ============================================================
 # Production: imagen mínima, sin código fuente innecesario
 # ============================================================
 FROM base AS production

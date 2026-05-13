@@ -15,8 +15,12 @@ celery_app = Celery(
     include=[
         "app.tasks.sync_chilecompra",
         "app.tasks.sync_detalle",  # Sprint 2: detalle de licitaciones
+        "app.tasks.scrape_bases",  # Sprint 2: scraping de PDFs desde el portal
+        "app.tasks.procesar_pdf",  # Sprint 2: parseo + chunking de PDFs
+        "app.tasks.embed_chunks",  # Sprint 2: embeddings de chunks con Voyage
+        "app.tasks.embed_licitacion",  # Sprint 2: embedding de licitación (título+desc)
+        "app.tasks.marcar_procesada",  # Sprint 2: marcar licitación procesada
         # Sprint 3+:
-        # "app.tasks.embeddings",
         # "app.tasks.notifications",
     ],
 )
@@ -34,6 +38,16 @@ celery_app.conf.update(
     task_reject_on_worker_lost=True,
     # Regla de oro #29: toda tarea debe ser idempotente
     # task_acks_on_failure_or_timeout=False  # descomentear si necesitas rollback manual
+    # Routing: tareas de scraping van a la queue dedicada (worker con browsers)
+    task_routes={
+        # scraping y parseo PDF → worker con browsers + pymupdf
+        "tasks.scrape_bases.*": {"queue": "scraping"},
+        "tasks.procesar_pdf.*": {"queue": "scraping"},
+        # embeddings → cola default (I/O HTTP puro a Voyage)
+        "tasks.embed_chunks.*": {"queue": "celery"},
+        "tasks.embed_licitacion.*": {"queue": "celery"},
+        "tasks.marcar_procesada.*": {"queue": "celery"},
+    },
 )
 
 # Beat schedule: sincronización cada 15 minutos (CLAUDE.md §6.3)

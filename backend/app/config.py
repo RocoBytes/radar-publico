@@ -65,9 +65,19 @@ class Settings(BaseSettings):
     # === IA ===
     anthropic_api_key: str = ""
     voyage_api_key: str = ""
+    voyage_model: str = "voyage-3"
+    voyage_max_batch_size: int = 128
     llm_provider: str = "anthropic"
     llm_model_reasoning: str = "claude-opus-4-7"
     llm_model_fast: str = "claude-haiku-4-5-20251001"
+
+    # === Procesamiento PDF ===
+    pdf_chunk_tokens: int = 800
+    pdf_chunk_overlap: int = 100
+
+    # === Seed / Admin inicial ===
+    admin_email: str = ""
+    admin_password: str = ""
 
     # === Notificaciones ===
     resend_api_key: str = ""
@@ -79,6 +89,16 @@ class Settings(BaseSettings):
     r2_secret_key: str = ""
     r2_bucket: str = "radar-publico-dev"
     r2_endpoint: str = ""
+
+    # === Scraping (Playwright + portal Mercado Público) ===
+    playwright_headless: bool = True
+    playwright_timeout_ms: int = 30000
+    scraping_user_agent: str = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    )
+    scraping_delay_ms: int = 2000  # delay entre requests anti-bot
 
     # === Observabilidad ===
     sentry_dsn: str = ""
