@@ -82,3 +82,29 @@ class OcEstado(str, enum.Enum):
     recepcion_conforme = "recepcion_conforme"
     pagada = "pagada"
     desconocido = "desconocido"
+
+
+class DocumentoTipo(str, enum.Enum):
+    """Tipo de documento de bases. Refleja documento_tipo en schema.sql."""
+
+    bases_administrativas = "bases_administrativas"
+    bases_tecnicas = "bases_tecnicas"
+    anexo = "anexo"
+    aclaracion = "aclaracion"
+    consulta = "consulta"
+    respuesta = "respuesta"
+    acta_apertura = "acta_apertura"
+    acta_adjudicacion = "acta_adjudicacion"
+    otro = "otro"
+
+
+class DocumentoStatus(str, enum.Enum):
+    """Estado de procesamiento de un documento.
+
+    Refleja el tipo documento_status en schema.sql.
+    """
+
+    pendiente = "pendiente"
+    descargado = "descargado"
+    procesado = "procesado"
+    error = "error"
