@@ -285,6 +285,26 @@ async def _run(codigo: str) -> dict[str, int]:
             duracion_ms=duracion_ms,
         )
 
+        # Encolar scraping de bases si aún no se descargaron.
+        # Encolar embedding de licitación (cola default, independiente del scraper).
+        # Usar send_task para evitar ciclo de import.
+        async with AsyncSessionLocal() as session:
+            lic_check: Licitacion | None = await session.get(Licitacion, codigo)
+        if lic_check is not None and lic_check.bases_descargadas_at is None:
+            celery_app.send_task(
+                "tasks.scrape_bases.scrape_bases_licitacion",
+                args=[codigo],
+                queue="scraping",
+            )
+            logger.debug("scrape_bases_encolado", codigo=codigo)
+
+        # Embedding de la licitación — independiente del scraper
+        celery_app.send_task(
+            "tasks.embed_licitacion.embed_licitacion",
+            args=[codigo],
+        )
+        logger.debug("embed_licitacion_encolado", codigo=codigo)
+
     except LicitacionNoEncontradaError:
         # Caso esperado: licitación revocada o eliminada en ChileCompra.
         # No se reintenta — es un 404 semántico, no un error transitorio.
