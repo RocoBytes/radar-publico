@@ -186,3 +186,67 @@ justifique reintentos automáticos.
 | Trigger por schedule propio (cada N minutos) | Consumo de cuota no controlado; consulta el detalle aunque no haya cambios |
 | Agregar en el mismo archivo `sync_chilecompra.py` | Sin precedente de múltiples tareas por archivo en el repo; `celery_app.py` ya reservaba `app.tasks.sync_detalle` |
 | Upsert parcial para items (INSERT ON CONFLICT UPDATE) | La lista de items puede cambiar en largo y posición; delete + insert es más correcto y simple |
+
+---
+
+## ADR-005: Scraping de documentos PDF desde el portal Mercado Público
+
+**Fecha:** 2026-05-11  
+**Estado:** Aprobado  
+**Sprint:** 2
+
+### Contexto
+
+Las bases técnicas y administrativas de las licitaciones se publican en el portal web de Mercado Público (`www.mercadopublico.cl`) como archivos adjuntos descargables. **La API REST de ChileCompra no expone estos documentos** — solo entrega metadata estructurada. Sin los PDFs, las funcionalidades de US-6.2 (Bases y documentos) y US-6.5 (Chat con bases) del Epic 6 no pueden construirse.
+
+ADR-003 descartó el scraping del portal para obtener **listados de licitaciones**, porque la API los entrega correctamente. Esta decisión es diferente: el scraping aplica únicamente a **documentos PDF** que la API no expone por ningún medio.
+
+### Decisión
+
+Implementar un worker Celery dedicado (`worker_scraper`) que usa Playwright para navegar el portal y extraer las URLs de adjuntos, y httpx para descargar los archivos. Los PDFs se almacenan en Cloudflare R2. Metadata y estado de descarga se registran en `documentos_bases`.
+
+### Arquitectura
+
+- **Queue Celery separada (`scraping`):** el worker usa browsers Chromium (Playwright), que consumen ~300–500 MB RAM por instancia. Aislarlo evita que agote recursos del worker de API y permite pausar el scraper independientemente si el portal bloquea la IP.
+- **Imagen Docker separada:** `mcr.microsoft.com/playwright/python:v1.48.0-jammy` en lugar de `python:3.12-slim` para el stage `playwright`. Evita resolver manualmente las dependencias nativas de Chromium (`libnss3`, `libatk-bridge2.0-0`, etc.) en la imagen slim.
+- **httpx para descarga, no Playwright:** Playwright se usa solo para navegar y extraer URLs. La descarga real de PDFs se hace con httpx (más eficiente para binarios).
+- **Rate limiting:** delay configurable entre requests (`SCRAPING_DELAY_MS=2000` default). User-agent realista. Sin fingerprinting agresivo.
+
+### Idempotencia
+
+- **Nivel licitación:** si `licitaciones.bases_descargadas_at IS NOT NULL` → `sin_cambio` sin scrape.
+- **Nivel documento:** si ya existe row con `(licitacion_codigo, hash_contenido)` → skip sin re-subida a R2. Permite re-scrapes parciales cuando el portal agrega aclaraciones nuevas.
+
+### Política de errores
+
+| Error | Comportamiento |
+|---|---|
+| Portal 404 | `no_encontrada=1`, sin retry, `bases_descargadas_at` en NULL |
+| `LicitacionSinBasesError` | `sin_bases=1`, sin retry, `bases_descargadas_at = now()` con 0 docs |
+| `PortalBloqueadoError` (captcha/403/429) | `status=error`, log Sentry-level, **sin autoretry** — requiere intervención |
+| `ScrapingError` / `R2UploadError` (transitorio) | autoretry con backoff exponencial, `max_retries=3` |
+
+### Reconciliación con ADR-003
+
+ADR-003 rechazó scraping para **listados** de licitaciones porque la API los entrega correctamente y el scraping agrega fragilidad innecesaria. Esta decisión no cambia ese principio — se amplía el scope: scraping está permitido exclusivamente para **recursos que la API no entrega** (PDFs de bases). Cualquier dato disponible en la API sigue siendo consumido vía API, no por scraping.
+
+### Consecuencias
+
+**Positivas:**
+- Habilita US-6.2 y US-6.5 (bases + chat con bases) que dependen de tener los PDFs en R2.
+- Aislamiento del worker: un bloqueo del portal no afecta el sync de API.
+- Idempotente: re-scrapes son seguros y no duplican archivos en R2.
+
+**Negativas:**
+- Selectores del DOM del portal son frágiles — si Mercado Público rediseña la página, los selectores se rompen. Mitigación: selectores múltiples con fallback, fixtures HTML en `tests/fixtures/portal/`.
+- Riesgo de bloqueo de IP. Mitigación: delays, user-agent realista, modo de error explícito con alerta.
+- Imagen del worker scraper pesa ~1.5 GB adicionales por Chromium.
+
+### Alternativas descartadas
+
+| Alternativa | Motivo de descarte |
+|---|---|
+| Solicitar acceso oficial a API de documentos | ChileCompra no expone API para descargar PDFs (confirmado Sprint 1) |
+| Descarga directa desde URLs de la API sin Playwright | La API no incluye URLs de descarga de PDFs en ningún endpoint |
+| Parseo de HTML estático con httpx | El portal usa ASP.NET WebForms con JavaScript para mostrar tabs — requiere browser headless |
+| Scraping por tercero (service externo) | Dependencia externa, latencia, costo; no justificado para el volumen de Sprint 1 |

@@ -94,3 +94,117 @@ SELECT COUNT(*) AS criterios FROM criterios_evaluacion;
 SELECT COUNT(*) AS fechas FROM licitacion_fechas;
 "
 ```
+
+---
+
+## Scraper de bases (worker_scraper)
+
+### Monitorear estado del worker
+
+```bash
+# Logs del worker (seguir en tiempo real)
+docker compose logs -f worker_scraper
+
+# Estado del queue 'scraping' en Flower
+# Abrir http://localhost:5555 → queues → scraping
+
+# Ver tareas activas
+docker compose exec redis redis-cli -n 1 llen celery
+```
+
+### Ver estado de descarga de bases
+
+```bash
+docker compose exec postgres psql -U radar -d radar -c "
+SELECT
+  COUNT(*) FILTER (WHERE bases_descargadas_at IS NOT NULL) AS con_bases,
+  COUNT(*) FILTER (WHERE bases_descargadas_at IS NULL AND detalle_sincronizado_at IS NOT NULL) AS pendientes,
+  COUNT(*) FILTER (WHERE bases_descargadas_at IS NULL AND detalle_sincronizado_at IS NULL) AS sin_detalle
+FROM licitaciones;
+"
+
+docker compose exec postgres psql -U radar -d radar -c "
+SELECT status, COUNT(*) FROM documentos_bases GROUP BY status ORDER BY status;
+"
+```
+
+### Re-encolar manualmente una licitación
+
+```bash
+docker compose exec api python -c "
+from app.celery_app import celery_app
+celery_app.send_task('tasks.scrape_bases.scrape_bases_licitacion', args=['1234-56-LR26'], queue='scraping')
+print('Encolado OK')
+"
+```
+
+### Re-encolar todas las licitaciones sin bases (batch)
+
+```bash
+# Con cuidado: encola TODAS las pendientes. Correr en ventana nocturna.
+docker compose exec api python -c "
+import asyncio
+from sqlalchemy import select
+from app.db.session import AsyncSessionLocal
+from app.models.licitacion import Licitacion
+from app.celery_app import celery_app
+
+async def main():
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(Licitacion.codigo).where(
+                Licitacion.detalle_sincronizado_at.is_not(None),
+                Licitacion.bases_descargadas_at.is_(None),
+            ).limit(500)
+        )
+        codigos = [r[0] for r in result.all()]
+    for codigo in codigos:
+        celery_app.send_task('tasks.scrape_bases.scrape_bases_licitacion', args=[codigo], queue='scraping')
+    print(f'Encoladas {len(codigos)} licitaciones')
+
+asyncio.run(main())
+"
+```
+
+### Ante PortalBloqueadoError masivo
+
+**Síntomas:** múltiples logs `scrape_bases_portal_bloqueado` en poco tiempo, `status=error` en `documentos_bases`.
+
+**Pasos:**
+
+1. Pausar la queue para no quemar reintentos:
+   ```bash
+   docker compose exec redis redis-cli -n 1 client kill ID <worker_id>
+   # O parar el worker directamente:
+   docker compose stop worker_scraper
+   ```
+
+2. Verificar cuántas licitaciones afectadas:
+   ```sql
+   SELECT COUNT(*) FROM documentos_bases WHERE status = 'error' AND error_mensaje LIKE '%bloqueado%';
+   ```
+
+3. Esperar mínimo 24 horas antes de reintentar (posible bloqueo por IP temporal).
+
+4. Si el bloqueo persiste, revisar si Mercado Público cambió su estructura de seguridad y contactar a soporte de ChileCompra.
+
+5. Reiniciar el worker y limpiar errores para re-intentar:
+   ```sql
+   UPDATE documentos_bases SET status = 'pendiente', error_mensaje = NULL
+   WHERE status = 'error' AND error_mensaje LIKE '%bloqueado%';
+   ```
+   Luego re-encolar con el batch script de arriba.
+
+### Limpiar documentos huérfanos en R2
+
+Si se eliminaron filas en `documentos_bases` manualmente (error de operación), los archivos en R2 pueden quedar huérfanos:
+
+```bash
+# Listar archivos en R2
+aws s3 ls s3://radar-publico-dev/bases/ --recursive --endpoint-url=$R2_ENDPOINT | wc -l
+
+# Comparar con filas en BD
+docker compose exec postgres psql -U radar -d radar -c "SELECT COUNT(*) FROM documentos_bases WHERE storage_path IS NOT NULL;"
+
+# Si hay discrepancia grande, contactar a Rodrigo antes de borrar en R2.
+```
