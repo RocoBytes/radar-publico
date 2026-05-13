@@ -1,0 +1,17 @@
+codigo,nombre,nombre_corto,orden
+15,Arica y Parinacota,Arica y Parinacota,1
+01,Tarapacá,Tarapacá,2
+02,Antofagasta,Antofagasta,3
+03,Atacama,Atacama,4
+04,Coquimbo,Coquimbo,5
+05,Valparaíso,Valparaíso,6
+13,Metropolitana de Santiago,RM,7
+06,Libertador General Bernardo O'Higgins,O'Higgins,8
+07,Maule,Maule,9
+16,Ñuble,Ñuble,10
+08,Biobío,Biobío,11
+09,La Araucanía,La Araucanía,12
+14,Los Ríos,Los Ríos,13
+10,Los Lagos,Los Lagos,14
+11,Aysén del General Carlos Ibáñez del Campo,Aysén,15
+12,Magallanes y de la Antártica Chilena,Magallanes,16
