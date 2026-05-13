@@ -20,7 +20,6 @@ import pytest_asyncio
 
 from app.schemas.chilecompra import (
     FechasAPI,
-    ItemListadoAPI,
     ItemsAPI,
     LicitacionDetalleAPI,
     LicitacionDetalleResponseAPI,
@@ -171,9 +170,7 @@ async def test_sync_detalle_licitacion_nueva(ticket_activo: dict[str, str]) -> N
         # la FK constraint de unspsc_codigos que no existe en la BD de test.
         items_count = (
             await session.execute(
-                select(func.count()).where(
-                    LicitacionItem.licitacion_codigo == codigo
-                )
+                select(func.count()).where(LicitacionItem.licitacion_codigo == codigo)
             )
         ).scalar()
         assert items_count == 0, f"Sin items en mock de test, got {items_count}"
@@ -184,7 +181,7 @@ async def test_sync_detalle_licitacion_nueva(ticket_activo: dict[str, str]) -> N
             )
         ).scalar()
         assert (
-            fechas_count >= 2
+            (fechas_count or 0) >= 2
         ), f"Esperadas al menos 2 fechas, encontradas {fechas_count}"
 
     # Cleanup del item de test
@@ -233,9 +230,7 @@ async def test_sync_detalle_licitacion_idempotente(
     async with AsyncSessionLocal() as session:
         items_count = (
             await session.execute(
-                select(func.count()).where(
-                    LicitacionItem.licitacion_codigo == codigo
-                )
+                select(func.count()).where(LicitacionItem.licitacion_codigo == codigo)
             )
         ).scalar()
         assert items_count == 0, f"No debería haber duplicación: {items_count} items"
