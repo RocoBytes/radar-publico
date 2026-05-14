@@ -20,6 +20,7 @@ celery_app = Celery(
         "app.tasks.embed_chunks",  # Sprint 2: embeddings de chunks con Voyage
         "app.tasks.embed_licitacion",  # Sprint 2: embedding de licitación (título+desc)
         "app.tasks.marcar_procesada",  # Sprint 2: marcar licitación procesada
+        "app.tasks.recalcula_scores",  # Sprint 4: scoring de relevancia
         # Sprint 3+:
         # "app.tasks.notifications",
     ],
