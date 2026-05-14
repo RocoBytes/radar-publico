@@ -43,6 +43,8 @@ class PipelineNotaResponse(BaseModel):
 class PipelineItemListItem(BaseModel):
     """Ítem resumido para el listado del pipeline (sin notas)."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     estado: PipelineEstado
     score: int | None

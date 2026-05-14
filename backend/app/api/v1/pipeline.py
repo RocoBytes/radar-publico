@@ -15,8 +15,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import CurrentUser, DbDep
-from app.models.empresa import Empresa
+from app.api.deps import CurrentUser, DbDep, EmpresaDep
 from app.models.enums import PipelineEstado
 from app.models.licitacion import Licitacion
 from app.models.pipeline import PipelineItem, PipelineNota
@@ -31,19 +30,6 @@ from app.schemas.pipeline import (
 )
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
-
-
-async def _get_empresa_o_404(db: DbDep, current_user: CurrentUser) -> Empresa:
-    result = await db.execute(
-        select(Empresa).where(Empresa.usuario_id == current_user.id)
-    )
-    empresa = result.scalar_one_or_none()
-    if empresa is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empresa no encontrada para este usuario",
-        )
-    return empresa
 
 
 async def _get_item_de_empresa_o_404(
@@ -145,6 +131,7 @@ def _build_detail(item: PipelineItem) -> PipelineItemResponse:
 async def listar_pipeline(
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
     estado: PipelineEstado | None = Query(default=None),  # noqa: B008
     score_min: int | None = Query(default=None, ge=0, le=100),
     page: int = Query(default=1, ge=1),
@@ -154,7 +141,6 @@ async def listar_pipeline(
 
     Filtra opcionalmente por estado y score_min.
     """
-    empresa = await _get_empresa_o_404(db, current_user)
 
     base = select(PipelineItem).where(PipelineItem.empresa_id == empresa.id)
     if estado is not None:
@@ -204,9 +190,9 @@ async def obtener_pipeline_item(
     item_id: uuid.UUID,
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
 ) -> PipelineItemResponse:
     """Retorna el detalle completo de un ítem del pipeline, incluyendo sus notas."""
-    empresa = await _get_empresa_o_404(db, current_user)
     item = await _get_item_de_empresa_o_404(item_id, empresa.id, db, con_notas=True)
     return _build_detail(item)
 
@@ -222,13 +208,13 @@ async def actualizar_pipeline_item(
     data: PipelineItemUpdateRequest,
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
 ) -> PipelineItemResponse:
     """Actualiza parcialmente un ítem del pipeline.
 
     Campos actualizables: estado, razon_descarte, monto_postulado,
     resultado_observaciones.
     """
-    empresa = await _get_empresa_o_404(db, current_user)
     item = await _get_item_de_empresa_o_404(item_id, empresa.id, db, con_notas=True)
 
     if data.estado is not None:
@@ -264,10 +250,9 @@ async def crear_nota(
     data: PipelineNotaCreateRequest,
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
 ) -> PipelineNotaResponse:
     """Agrega una nota textual a un ítem del pipeline."""
-    empresa = await _get_empresa_o_404(db, current_user)
-    # Solo verificar pertenencia — no necesitamos cargar notas aquí
     await _get_item_de_empresa_o_404(item_id, empresa.id, db)
 
     nota = PipelineNota(pipeline_item_id=item_id, contenido=data.contenido)
@@ -292,9 +277,9 @@ async def eliminar_nota(
     nota_id: uuid.UUID,
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
 ) -> None:
     """Elimina una nota de un ítem del pipeline."""
-    empresa = await _get_empresa_o_404(db, current_user)
     await _get_item_de_empresa_o_404(item_id, empresa.id, db)
 
     result = await db.execute(

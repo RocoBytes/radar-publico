@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.security import InvalidTokenError, decode_access_token
 from app.db import session as _db_session
+from app.models.empresa import Empresa
 from app.models.enums import UserRole, UserStatus
 from app.models.usuario import Usuario
 
@@ -66,6 +67,22 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[Usuario, Depends(get_current_user)]
+
+
+async def get_empresa_o_404(db: DbDep, current_user: CurrentUser) -> Empresa:
+    result = await db.execute(
+        select(Empresa).where(Empresa.usuario_id == current_user.id)
+    )
+    empresa = result.scalar_one_or_none()
+    if empresa is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa no encontrada para este usuario",
+        )
+    return empresa
+
+
+EmpresaDep = Annotated[Empresa, Depends(get_empresa_o_404)]
 
 
 async def get_current_admin(current_user: CurrentUser) -> Usuario:

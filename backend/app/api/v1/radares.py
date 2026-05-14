@@ -13,8 +13,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import func, select
 
-from app.api.deps import CurrentUser, DbDep
-from app.models.empresa import Empresa
+from app.api.deps import CurrentUser, DbDep, EmpresaDep
 from app.models.radar import Radar
 from app.schemas.radar import (
     RadarCreateRequest,
@@ -26,19 +25,6 @@ from app.schemas.radar import (
 router = APIRouter(prefix="/radares", tags=["radares"])
 
 _MAX_RADARES_POR_EMPRESA = 50
-
-
-async def _get_empresa_o_404(db: DbDep, current_user: CurrentUser) -> Empresa:
-    result = await db.execute(
-        select(Empresa).where(Empresa.usuario_id == current_user.id)
-    )
-    empresa = result.scalar_one_or_none()
-    if empresa is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empresa no encontrada para este usuario",
-        )
-    return empresa
 
 
 async def _get_radar_de_empresa_o_404(
@@ -63,9 +49,9 @@ async def _get_radar_de_empresa_o_404(
 async def listar_radares(
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
 ) -> RadarListResponse:
     """Lista todos los radares de la empresa, ordenados por created_at DESC."""
-    empresa = await _get_empresa_o_404(db, current_user)
 
     result = await db.execute(
         select(Radar)
@@ -85,12 +71,12 @@ async def crear_radar(
     data: RadarCreateRequest,
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
 ) -> RadarResponse:
     """Crea un nuevo radar para la empresa del usuario autenticado.
 
     Levanta 400 si se alcanza el límite de 50 radares por empresa.
     """
-    empresa = await _get_empresa_o_404(db, current_user)
 
     count_result = await db.execute(
         select(func.count()).where(Radar.empresa_id == empresa.id)
@@ -125,9 +111,9 @@ async def obtener_radar(
     radar_id: uuid.UUID,
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
 ) -> RadarResponse:
     """Retorna el detalle de un radar por UUID."""
-    empresa = await _get_empresa_o_404(db, current_user)
     radar = await _get_radar_de_empresa_o_404(radar_id, empresa.id, db)
     return RadarResponse.model_validate(radar)
 
@@ -138,9 +124,9 @@ async def actualizar_radar(
     data: RadarUpdateRequest,
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
 ) -> RadarResponse:
     """Actualiza parcialmente un radar. Solo se aplican los campos enviados."""
-    empresa = await _get_empresa_o_404(db, current_user)
     radar = await _get_radar_de_empresa_o_404(radar_id, empresa.id, db)
 
     if data.nombre is not None:
@@ -170,13 +156,13 @@ async def eliminar_radar(
     radar_id: uuid.UUID,
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
 ) -> None:
     """Elimina un radar por UUID.
 
     Levanta 404 si el radar no existe.
     Levanta 403 si el radar pertenece a otra empresa.
     """
-    empresa = await _get_empresa_o_404(db, current_user)
     radar = await _get_radar_de_empresa_o_404(radar_id, empresa.id, db)
     await db.delete(radar)
     await db.commit()

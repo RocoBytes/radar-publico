@@ -10,9 +10,8 @@ from fastapi import APIRouter, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import CurrentUser, DbDep
+from app.api.deps import CurrentUser, DbDep, EmpresaDep
 from app.models.catalogos import Unspsc
-from app.models.empresa import Empresa
 from app.models.enums import LicitacionEstado
 from app.models.interes import Interes, InteresTipo
 from app.models.licitacion import Licitacion, LicitacionItem
@@ -31,21 +30,6 @@ _TOP_N = 5
 _VENTANA_CIERRE_HORAS = 24
 
 
-async def _get_empresa_o_404(db: DbDep, current_user: CurrentUser) -> Empresa:
-    from fastapi import HTTPException, status
-
-    result = await db.execute(
-        select(Empresa).where(Empresa.usuario_id == current_user.id)
-    )
-    empresa = result.scalar_one_or_none()
-    if empresa is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empresa no encontrada para este usuario",
-        )
-    return empresa
-
-
 # ---------------------------------------------------------------------------
 # GET /dashboard/resumen
 # ---------------------------------------------------------------------------
@@ -55,9 +39,9 @@ async def _get_empresa_o_404(db: DbDep, current_user: CurrentUser) -> Empresa:
 async def obtener_resumen(
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
 ) -> DashboardResumenResponse:
     """KPIs globales + top-5 oportunidades + última sincronización."""
-    empresa = await _get_empresa_o_404(db, current_user)
     ahora = datetime.now(UTC)
     hoy_inicio = ahora.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -167,6 +151,7 @@ async def obtener_resumen(
 async def obtener_segmentos(
     db: DbDep,
     current_user: CurrentUser,
+    empresa: EmpresaDep,
     solo_intereses: bool = Query(default=False),
 ) -> DashboardSegmentosResponse:
     """Distribución de licitaciones activas por segmento UNSPSC (nivel 2).
@@ -174,7 +159,6 @@ async def obtener_segmentos(
     Si solo_intereses=true, filtra solo los segmentos que coinciden con los
     intereses UNSPSC de la empresa.
     """
-    empresa = await _get_empresa_o_404(db, current_user)
 
     # Segmento = primeros 2 dígitos de unspsc_codigo del item
     segmento_col = func.left(LicitacionItem.unspsc_codigo, 2).label("segmento")
