@@ -89,13 +89,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Reutilizar el venv construido en builder (deps Python idénticas)
-COPY --from=builder /app/.venv /app/.venv
-ENV PATH="/app/.venv/bin:$PATH"
+# Instalar deps con pip del sistema de la imagen Playwright.
+# No copiamos el venv del builder (arm64) porque esta imagen puede correr
+# bajo emulación amd64 en Apple Silicon y los binarios serían incompatibles.
+COPY requirements.txt* ./
+RUN if [ -f requirements.txt ]; then \
+        pip install --no-cache-dir -r requirements.txt; \
+    fi
 
 COPY . .
 
-CMD ["celery", "-A", "app.celery_app", "worker", "-Q", "scraping", "--concurrency=2", "--loglevel=info"]
+CMD ["python", "-m", "celery", "-A", "app.celery_app", "worker", "-Q", "scraping", "--concurrency=2", "--loglevel=info"]
 
 # ============================================================
 # Production: imagen mínima, sin código fuente innecesario
