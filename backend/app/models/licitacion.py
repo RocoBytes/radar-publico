@@ -34,6 +34,7 @@ from app.models.enums import FechaTipo, LicitacionEstado
 
 if TYPE_CHECKING:
     from app.models.organismo import Organismo
+    from app.models.pipeline import PipelineItem
 
 
 class Licitacion(Base):
@@ -152,6 +153,9 @@ class Licitacion(Base):
     )
     fechas: Mapped[list["LicitacionFecha"]] = relationship(
         "LicitacionFecha", back_populates="licitacion", cascade="all, delete-orphan"
+    )
+    pipeline_items: Mapped[list["PipelineItem"]] = relationship(
+        "PipelineItem", back_populates="licitacion", cascade="all, delete-orphan"
     )
 
     __table_args__ = (

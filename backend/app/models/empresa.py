@@ -28,6 +28,8 @@ from app.models.enums import EmpresaTamano
 
 if TYPE_CHECKING:
     from app.models.interes import Interes
+    from app.models.pipeline import PipelineItem
+    from app.models.radar import Radar
     from app.models.ticket import TicketApi
     from app.models.usuario import Usuario
 
@@ -120,6 +122,16 @@ class Empresa(Base):
     )
     intereses: Mapped[list["Interes"]] = relationship(
         "Interes",
+        back_populates="empresa",
+        cascade="all, delete-orphan",
+    )
+    radares: Mapped[list["Radar"]] = relationship(
+        "Radar",
+        back_populates="empresa",
+        cascade="all, delete-orphan",
+    )
+    pipeline_items: Mapped[list["PipelineItem"]] = relationship(
+        "PipelineItem",
         back_populates="empresa",
         cascade="all, delete-orphan",
     )

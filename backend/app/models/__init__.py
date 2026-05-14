@@ -8,6 +8,7 @@ from app.models.api_log import ApiQuotaLog
 from app.models.catalogos import Comuna, Region, Unspsc
 from app.models.documento_base import DocumentoBase, DocumentoChunk
 from app.models.empresa import Empresa
+from app.models.enums import PipelineEstado
 from app.models.eventos_auditoria import AuditAction, EventoAuditoria
 from app.models.interes import Interes, InteresTipo
 from app.models.licitacion import (
@@ -18,7 +19,9 @@ from app.models.licitacion import (
 )
 from app.models.organismo import Organismo
 from app.models.password_reset import PasswordResetToken
+from app.models.pipeline import PipelineItem, PipelineNota
 from app.models.proveedor import Proveedor
+from app.models.radar import Radar
 from app.models.refresh_token import RefreshToken
 from app.models.ticket import TicketApi
 from app.models.usuario import Usuario
@@ -39,7 +42,11 @@ __all__ = [
     "LicitacionItem",
     "Organismo",
     "PasswordResetToken",
+    "PipelineEstado",
+    "PipelineItem",
+    "PipelineNota",
     "Proveedor",
+    "Radar",
     "RefreshToken",
     "Region",
     "TicketApi",

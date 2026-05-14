@@ -108,3 +108,19 @@ class DocumentoStatus(str, enum.Enum):
     descargado = "descargado"
     procesado = "procesado"
     error = "error"
+
+
+class PipelineEstado(str, enum.Enum):
+    """Estado de un ítem en el pipeline de seguimiento.
+
+    Refleja el tipo pipeline_estado en schema.sql.
+    """
+
+    nueva = "nueva"
+    vista = "vista"
+    interesado = "interesado"
+    postulando = "postulando"
+    postulada = "postulada"
+    adjudicada = "adjudicada"
+    perdida = "perdida"
+    descartada = "descartada"
