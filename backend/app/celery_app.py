@@ -21,6 +21,7 @@ celery_app = Celery(
         "app.tasks.embed_licitacion",  # Sprint 2: embedding de licitación (título+desc)
         "app.tasks.marcar_procesada",  # Sprint 2: marcar licitación procesada
         "app.tasks.recalcula_scores",  # Sprint 4: scoring de relevancia
+        "app.tasks.ejecuta_radares",  # Sprint 4: ejecucion de radares
         # Sprint 3+:
         # "app.tasks.notifications",
     ],
@@ -56,6 +57,11 @@ celery_app.conf.beat_schedule = {
     "sync-listado-diario": {
         "task": "tasks.sync_chilecompra.sync_listado_diario",
         "schedule": 900.0,  # 15 minutos en segundos
-        "options": {"expires": 800},  # no ejecutar si llega tarde (overlap)
+        "options": {"expires": 800},
+    },
+    "ejecuta-radares-diarios": {
+        "task": "tasks.ejecuta_radares.ejecuta_radares_diarios",
+        "schedule": 900.0,  # cada 15 min, encadenado al sync
+        "options": {"expires": 800},
     },
 }
