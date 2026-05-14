@@ -9,13 +9,13 @@ import hashlib
 import secrets
 import string
 
+import bcrypt as _bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from app.config import settings
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
+_BCRYPT_ROUNDS = 12
 
 
 class AccessTokenPayload(BaseModel):
@@ -30,11 +30,12 @@ class InvalidTokenError(Exception):
 
 
 def hash_password(plaintext: str) -> str:
-    return str(_pwd_context.hash(plaintext))
+    salt = _bcrypt.gensalt(rounds=_BCRYPT_ROUNDS)
+    return _bcrypt.hashpw(plaintext.encode(), salt).decode()
 
 
 def verify_password(plaintext: str, hashed: str) -> bool:
-    return bool(_pwd_context.verify(plaintext, hashed))
+    return bool(_bcrypt.checkpw(plaintext.encode(), hashed.encode()))
 
 
 def hash_token(plaintext: str) -> str:
