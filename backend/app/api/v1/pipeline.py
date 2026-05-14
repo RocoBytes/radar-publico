@@ -8,6 +8,7 @@ DELETE /api/v1/pipeline/{id}/notas/{nota_id} — eliminar una nota
 """
 
 from datetime import UTC, datetime
+import math
 import uuid
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -103,7 +104,9 @@ def _build_list_item(item: PipelineItem, notas_count: int) -> PipelineItemListIt
         score=item.score,
         score_justificacion=item.score_justificacion,
         razon_descarte=item.razon_descarte,
-        monto_postulado=item.monto_postulado,
+        monto_postulado=(
+            float(item.monto_postulado) if item.monto_postulado is not None else None
+        ),
         resultado_observaciones=item.resultado_observaciones,
         detected_by_radar_id=item.detected_by_radar_id,
         notas_count=notas_count,
@@ -120,7 +123,9 @@ def _build_detail(item: PipelineItem) -> PipelineItemResponse:
         score=item.score,
         score_justificacion=item.score_justificacion,
         razon_descarte=item.razon_descarte,
-        monto_postulado=item.monto_postulado,
+        monto_postulado=(
+            float(item.monto_postulado) if item.monto_postulado is not None else None
+        ),
         resultado_observaciones=item.resultado_observaciones,
         detected_by_radar_id=item.detected_by_radar_id,
         notas_count=len(item.notas),
@@ -185,6 +190,7 @@ async def listar_pipeline(
         total=total,
         page=page,
         page_size=page_size,
+        total_pages=math.ceil(total / page_size),
     )
 
 

@@ -70,6 +70,7 @@ class PipelineListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+    total_pages: int
 
 
 class PipelineItemUpdateRequest(BaseModel):

@@ -18,6 +18,7 @@ class LicitacionEnTopResponse(BaseModel):
     estado: LicitacionEstado
     fecha_cierre: datetime | None
     monto_estimado: float | None
+    organismo_nombre: str | None
 
 
 class TopOportunidad(BaseModel):

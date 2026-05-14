@@ -109,13 +109,17 @@ async def obtener_resumen(
     )
     en_pipeline: int = pipeline_r.scalar_one()
 
-    # 5. Top-5 por score con licitación cargada
+    # 5. Top-5 por score con licitación y organismo cargados
     top_r = await db.execute(
         select(PipelineItem)
         .where(PipelineItem.empresa_id == empresa.id)
         .order_by(PipelineItem.score.desc().nulls_last())
         .limit(_TOP_N)
-        .options(selectinload(PipelineItem.licitacion))
+        .options(
+            selectinload(PipelineItem.licitacion).options(
+                selectinload(Licitacion.organismo)
+            )
+        )
     )
     top_items = list(top_r.scalars().all())
 
@@ -130,6 +134,11 @@ async def obtener_resumen(
                 estado=item.licitacion.estado,
                 fecha_cierre=item.licitacion.fecha_cierre,
                 monto_estimado=item.licitacion.monto_estimado,
+                organismo_nombre=(
+                    item.licitacion.organismo.nombre
+                    if item.licitacion.organismo
+                    else None
+                ),
             ),
         )
         for item in top_items

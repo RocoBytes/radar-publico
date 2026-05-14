@@ -7,10 +7,13 @@ Se valida en entrada (create/update) y se retorna tal cual en las respuestas.
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TCH003
-from typing import Any
+from typing import Any, Literal
 import uuid  # noqa: TCH003
 
 from pydantic import BaseModel, ConfigDict, Field
+
+NotifCanal = Literal["email", "whatsapp", "in_app"]
+NotifFrecuencia = Literal["instantaneo", "diario", "semanal"]
 
 
 class FiltrosRadar(BaseModel):
@@ -32,8 +35,8 @@ class RadarCreateRequest(BaseModel):
     nombre: str = Field(min_length=1, max_length=100)
     descripcion: str | None = Field(default=None, max_length=1000)
     filtros: FiltrosRadar
-    notif_canal: str = Field(default="email", max_length=20)
-    notif_frecuencia: str = Field(default="instantaneo", max_length=20)
+    notif_canal: NotifCanal = "email"
+    notif_frecuencia: NotifFrecuencia = "instantaneo"
     notif_score_minimo: int | None = Field(default=70, ge=0, le=100)
 
 
@@ -44,8 +47,8 @@ class RadarUpdateRequest(BaseModel):
     descripcion: str | None = None
     filtros: FiltrosRadar | None = None
     activo: bool | None = None
-    notif_canal: str | None = Field(default=None, max_length=20)
-    notif_frecuencia: str | None = Field(default=None, max_length=20)
+    notif_canal: NotifCanal | None = None
+    notif_frecuencia: NotifFrecuencia | None = None
     notif_score_minimo: int | None = Field(default=None, ge=0, le=100)
 
 
