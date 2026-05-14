@@ -16,6 +16,7 @@ import pytest_asyncio
 from sqlalchemy import delete
 
 from app.core.security import create_access_token
+from app.models.catalogos import Unspsc
 from app.models.enums import FechaTipo, LicitacionEstado
 from app.models.licitacion import (
     Licitacion,
@@ -215,3 +216,97 @@ async def test_detalle_no_encontrado(
         headers=_auth_headers(str(user.id)),
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_filtro_por_unspsc(
+    client: AsyncClient,
+    make_user: Any,
+    db_session: AsyncSession,
+) -> None:
+    """Filtro UNSPSC con jerarquía:
+
+    - lic_A tiene item con unspsc_codigo=73101500 (segmento 73)
+    - lic_B tiene item con unspsc_codigo=80101500 (segmento 80)
+    - unspsc_codigo=73    → solo lic_A
+    - unspsc_codigo=8010  → solo lic_B
+    - unspsc_codigo=99    → 0 resultados
+    """
+    user = await make_user()
+
+    # Insertar códigos UNSPSC mínimos para satisfacer la FK de licitacion_items
+    unspsc_a = Unspsc(
+        codigo="73101500",
+        nombre_es="Limpieza general",
+        nivel=8,
+        segmento="73",
+        familia="7310",
+        clase="731015",
+        commodity="73101500",
+    )
+    unspsc_b = Unspsc(
+        codigo="80101500",
+        nombre_es="Auditoría contable",
+        nivel=8,
+        segmento="80",
+        familia="8010",
+        clase="801015",
+        commodity="80101500",
+    )
+    db_session.add_all([unspsc_a, unspsc_b])
+    await db_session.flush()
+
+    lic_a = _licitacion("UNSPSC-A-L123")
+    lic_b = _licitacion("UNSPSC-B-L123")
+    db_session.add_all([lic_a, lic_b])
+    await db_session.flush()
+
+    item_a = LicitacionItem(
+        licitacion_codigo="UNSPSC-A-L123",
+        numero_item=1,
+        unspsc_codigo="73101500",
+        nombre_producto="Servicio de limpieza",
+    )
+    item_b = LicitacionItem(
+        licitacion_codigo="UNSPSC-B-L123",
+        numero_item=1,
+        unspsc_codigo="80101500",
+        nombre_producto="Servicio de auditoría",
+    )
+    db_session.add_all([item_a, item_b])
+    await db_session.commit()
+
+    headers = _auth_headers(str(user.id))
+
+    # Segmento 73 → solo lic_A
+    resp = await client.get(
+        "/api/v1/licitaciones",
+        params={"unspsc_codigo": "73"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["codigo"] == "UNSPSC-A-L123"
+
+    # Familia 8010 → solo lic_B
+    resp = await client.get(
+        "/api/v1/licitaciones",
+        params={"unspsc_codigo": "8010"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["codigo"] == "UNSPSC-B-L123"
+
+    # Segmento 99 → ninguna
+    resp = await client.get(
+        "/api/v1/licitaciones",
+        params={"unspsc_codigo": "99"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 0
+    assert data["items"] == []
