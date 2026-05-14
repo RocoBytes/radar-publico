@@ -48,7 +48,7 @@ class PipelineItemListItem(BaseModel):
     score: int | None
     score_justificacion: dict[str, Any] | None
     razon_descarte: str | None
-    monto_postulado: Decimal | None
+    monto_postulado: float | None
     resultado_observaciones: str | None
     detected_by_radar_id: uuid.UUID | None
     notas_count: int
