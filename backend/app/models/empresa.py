@@ -27,6 +27,7 @@ from app.db.base import Base
 from app.models.enums import EmpresaTamano
 
 if TYPE_CHECKING:
+    from app.models.interes import Interes
     from app.models.ticket import TicketApi
     from app.models.usuario import Usuario
 
@@ -115,6 +116,11 @@ class Empresa(Base):
         "TicketApi",
         back_populates="empresa",
         uselist=False,
+        cascade="all, delete-orphan",
+    )
+    intereses: Mapped[list["Interes"]] = relationship(
+        "Interes",
+        back_populates="empresa",
         cascade="all, delete-orphan",
     )
 

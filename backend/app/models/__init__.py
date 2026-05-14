@@ -9,6 +9,7 @@ from app.models.catalogos import Comuna, Region, Unspsc
 from app.models.documento_base import DocumentoBase, DocumentoChunk
 from app.models.empresa import Empresa
 from app.models.eventos_auditoria import AuditAction, EventoAuditoria
+from app.models.interes import Interes, InteresTipo
 from app.models.licitacion import (
     CriterioEvaluacion,
     Licitacion,
@@ -31,6 +32,8 @@ __all__ = [
     "DocumentoChunk",
     "Empresa",
     "EventoAuditoria",
+    "Interes",
+    "InteresTipo",
     "Licitacion",
     "LicitacionFecha",
     "LicitacionItem",
