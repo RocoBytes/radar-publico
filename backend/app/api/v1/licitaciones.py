@@ -10,12 +10,12 @@ from datetime import UTC, date, datetime, time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, exists, func, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.api.deps import CurrentUser, DbDep  # noqa: TCH001
 from app.models.enums import LicitacionEstado  # noqa: TCH001
-from app.models.licitacion import Licitacion
+from app.models.licitacion import Licitacion, LicitacionItem
 from app.models.organismo import Organismo
 from app.schemas.licitaciones import (
     LicitacionDetalleResponse,
@@ -47,6 +47,7 @@ def _apply_filters(
     fecha_cierre_hasta: date | None,
     monto_min: float | None,
     monto_max: float | None,
+    unspsc_codigo: str | None,
 ) -> Select[Any]:
     """Aplica filtros condicionales a la query de licitaciones."""
     if q:
@@ -73,6 +74,17 @@ def _apply_filters(
         stmt = stmt.where(Licitacion.monto_estimado >= monto_min)
     if monto_max is not None:
         stmt = stmt.where(Licitacion.monto_estimado <= monto_max)
+    if unspsc_codigo is not None:
+        # EXISTS soporta jerarquía: "73" → segmento, "7310" → familia,
+        # "731015" → clase, "73101500" → commodity (UNSPSC §9 CLAUDE.md).
+        stmt = stmt.where(
+            exists(
+                select(LicitacionItem.id).where(
+                    LicitacionItem.licitacion_codigo == Licitacion.codigo,
+                    LicitacionItem.unspsc_codigo.like(f"{unspsc_codigo}%"),
+                )
+            )
+        )
     return stmt
 
 
@@ -94,6 +106,15 @@ async def listar_licitaciones(
     fecha_cierre_hasta: date | None = Query(default=None),  # noqa: B008
     monto_min: float | None = Query(default=None, ge=0),
     monto_max: float | None = Query(default=None, ge=0),
+    unspsc_codigo: str | None = Query(
+        default=None,
+        min_length=2,
+        max_length=8,
+        description=(
+            "Código UNSPSC (2-8 dígitos). "
+            "Filtra licitaciones con ítems en ese rubro."
+        ),
+    ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
 ) -> LicitacionListResponse:
@@ -122,6 +143,7 @@ async def listar_licitaciones(
         fecha_cierre_hasta=fecha_cierre_hasta,
         monto_min=monto_min,
         monto_max=monto_max,
+        unspsc_codigo=unspsc_codigo,
     )
 
     # COUNT separado — no usar len() sobre los resultados paginados
