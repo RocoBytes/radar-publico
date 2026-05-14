@@ -14,6 +14,7 @@ from httpx import AsyncClient  # noqa: TCH002
 import pytest
 import pytest_asyncio
 from sqlalchemy import delete
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.security import create_access_token
 from app.models.catalogos import Unspsc
@@ -234,26 +235,32 @@ async def test_filtro_por_unspsc(
     """
     user = await make_user()
 
-    # Insertar códigos UNSPSC mínimos para satisfacer la FK de licitacion_items
-    unspsc_a = Unspsc(
-        codigo="73101500",
-        nombre_es="Limpieza general",
-        nivel=8,
-        segmento="73",
-        familia="7310",
-        clase="731015",
-        commodity="73101500",
+    # Insertar códigos UNSPSC mínimos para satisfacer la FK de licitacion_items.
+    # ON CONFLICT DO NOTHING garantiza idempotencia entre runs consecutivos.
+    await db_session.execute(
+        pg_insert(Unspsc)
+        .values([
+            {
+                "codigo": "73101500",
+                "nombre_es": "Limpieza general",
+                "nivel": 8,
+                "segmento": "73",
+                "familia": "7310",
+                "clase": "731015",
+                "commodity": "73101500",
+            },
+            {
+                "codigo": "80101500",
+                "nombre_es": "Auditoría contable",
+                "nivel": 8,
+                "segmento": "80",
+                "familia": "8010",
+                "clase": "801015",
+                "commodity": "80101500",
+            },
+        ])
+        .on_conflict_do_nothing(index_elements=["codigo"])
     )
-    unspsc_b = Unspsc(
-        codigo="80101500",
-        nombre_es="Auditoría contable",
-        nivel=8,
-        segmento="80",
-        familia="8010",
-        clase="801015",
-        commodity="80101500",
-    )
-    db_session.add_all([unspsc_a, unspsc_b])
     await db_session.flush()
 
     lic_a = _licitacion("UNSPSC-A-L123")

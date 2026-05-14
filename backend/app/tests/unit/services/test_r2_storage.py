@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app.config import settings
 from app.services.storage.exceptions import R2UploadError
 from app.services.storage.r2 import MAX_TAMANO_BYTES, StorageResult, subir_documento
 
@@ -36,14 +37,14 @@ async def test_subir_documento_ok() -> None:
     assert isinstance(result, StorageResult)
     assert result.storage_path.startswith("bases/1234-56-LR26/")
     assert result.storage_path.endswith(".pdf")
-    assert result.storage_bucket == "radar-publico-dev"
+    assert result.storage_bucket == settings.r2_bucket
     assert result.tamano_bytes == len(_FAKE_PDF)
     assert result.mime_type == "application/pdf"
     assert result.hash_sha256 == hashlib.sha256(_FAKE_PDF).hexdigest()
     mock_s3.put_object.assert_called_once()
 
     call_kwargs = mock_s3.put_object.call_args.kwargs
-    assert call_kwargs["Bucket"] == "radar-publico-dev"
+    assert call_kwargs["Bucket"] == settings.r2_bucket
     assert call_kwargs["Key"] == result.storage_path
     assert call_kwargs["ContentType"] == "application/pdf"
 
