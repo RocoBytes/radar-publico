@@ -31,11 +31,13 @@ import hashlib
 import json
 from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.celery_app import celery_app
 from app.core.encryption import decrypt_ticket
 from app.models.enums import FechaTipo, LicitacionEstado, TicketStatus
+from app.schemas.chilecompra import CompradorAPI
 from app.services.chilecompra.client import MercadoPublicoClient
 from app.services.chilecompra.enums import EstadoLicitacion
 from app.services.chilecompra.exceptions import (
@@ -66,6 +68,53 @@ def _hash_detalle(payload: dict[str, Any]) -> str:
     """SHA-256 del payload completo del detalle para detectar cambios."""
     content = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha256(content.encode()).hexdigest()
+
+
+async def _upsert_organismo(
+    session: AsyncSession,
+    comprador: CompradorAPI,
+) -> None:
+    """Upsert del organismo comprador antes de asignar el FK en licitaciones.
+
+    Garantiza que la fila exista en `organismos` para evitar FK violation.
+    Si CodigoOrganismo no es parseable como int, retorna sin hacer nada.
+
+    Args:
+        session: Sesión async activa (dentro de la transacción principal).
+        comprador: Datos del comprador tal como los devuelve la API.
+    """
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    from app.models.organismo import Organismo
+
+    try:
+        codigo = int(comprador.CodigoOrganismo or "")
+    except (ValueError, TypeError):
+        return
+
+    nombre = comprador.NombreOrganismo or f"Organismo {codigo}"
+    ahora = datetime.now(UTC)
+
+    stmt = (
+        pg_insert(Organismo)
+        .values(
+            codigo_organismo=codigo,
+            nombre=nombre,
+            rut=comprador.RutUnidad,
+            region=comprador.RegionUnidad,
+            updated_at=ahora,
+        )
+        .on_conflict_do_update(
+            index_elements=["codigo_organismo"],
+            set_={
+                "nombre": nombre,
+                "rut": comprador.RutUnidad,
+                "region": comprador.RegionUnidad,
+                "updated_at": ahora,
+            },
+        )
+    )
+    await session.execute(stmt)
 
 
 async def _run(codigo: str) -> dict[str, int]:
@@ -185,9 +234,10 @@ async def _run(codigo: str) -> dict[str, int]:
             lic.detalle_sincronizado_at = datetime.now(UTC)
             lic.updated_at = datetime.now(UTC)
 
-            # Campos del comprador
+            # Campos del comprador — upsert organismo primero para evitar FK violation
             if detalle.Comprador:
                 if detalle.Comprador.CodigoOrganismo:
+                    await _upsert_organismo(session, detalle.Comprador)
                     with contextlib.suppress(ValueError, TypeError):
                         lic.codigo_organismo = int(detalle.Comprador.CodigoOrganismo)
                 if detalle.Comprador.CodigoUnidad:

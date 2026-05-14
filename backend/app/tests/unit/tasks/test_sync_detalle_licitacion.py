@@ -8,6 +8,7 @@ Casos cubiertos:
 - Idempotencia: segunda ejecución retorna sin_cambio sin duplicar filas.
 - 404: retorna no_encontrada=1, no eleva excepción.
 - Auto-encolado: sync_listado_diario encola detalle en nueva, no en sin_cambio.
+- Upsert organismo: crea fila en organismos antes de asignar FK.
 """
 
 from datetime import UTC, datetime
@@ -19,6 +20,7 @@ import pytest
 import pytest_asyncio
 
 from app.schemas.chilecompra import (
+    CompradorAPI,
     FechasAPI,
     ItemsAPI,
     LicitacionDetalleAPI,
@@ -56,6 +58,47 @@ def _make_detalle_response(
         Moneda="CLP",
         MontoEstimado=1_000_000.0,
         EsRenovable=0,
+        Items=ItemsAPI(Cantidad=0, Listado=[]),
+        Fechas=FechasAPI(
+            FechaCreacion=datetime(2026, 5, 1, tzinfo=UTC),
+            FechaPublicacion=datetime(2026, 5, 2, tzinfo=UTC),
+            FechaCierre=datetime(2026, 6, 1, tzinfo=UTC),
+        ),
+    )
+    return LicitacionDetalleResponseAPI(Cantidad=1, Listado=[detalle])
+
+
+def _make_detalle_response_con_organismo(
+    codigo: str,
+    codigo_org: int,
+) -> LicitacionDetalleResponseAPI:
+    """Construye una respuesta de detalle que incluye datos del comprador.
+
+    Permite verificar que _upsert_organismo se ejecuta correctamente y
+    que el FK queda asignado en la licitación resultante.
+
+    Args:
+        codigo: Código de la licitación de prueba.
+        codigo_org: Código numérico del organismo a insertar.
+    """
+    comprador = CompradorAPI(
+        CodigoOrganismo=str(codigo_org),
+        NombreOrganismo=f"Municipalidad Test {codigo_org}",
+        RutUnidad="69.123.456-7",
+        RegionUnidad="Región Metropolitana de Santiago",
+        NombreUnidad="Unidad de Abastecimiento",
+        CodigoUnidad="1001",
+    )
+    detalle = LicitacionDetalleAPI(
+        CodigoExterno=codigo,
+        Nombre="Licitación con Organismo Test",
+        CodigoEstado=5,
+        Estado="Publicada",
+        Descripcion="Descripción con datos de comprador",
+        Moneda="CLP",
+        MontoEstimado=2_500_000.0,
+        EsRenovable=0,
+        Comprador=comprador,
         Items=ItemsAPI(Cantidad=0, Listado=[]),
         Fechas=FechasAPI(
             FechaCreacion=datetime(2026, 5, 1, tzinfo=UTC),
@@ -181,8 +224,8 @@ async def test_sync_detalle_licitacion_nueva(ticket_activo: dict[str, str]) -> N
             )
         ).scalar()
         assert (
-            (fechas_count or 0) >= 2
-        ), f"Esperadas al menos 2 fechas, encontradas {fechas_count}"
+            fechas_count or 0
+        ) >= 2, f"Esperadas al menos 2 fechas, encontradas {fechas_count}"
 
     # Cleanup del item de test
     async with AsyncSessionLocal() as session:
@@ -379,3 +422,73 @@ async def test_sync_listado_encola_detalle() -> None:
             if lic:
                 await session.delete(lic)
         await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_sync_detalle_crea_organismo(ticket_activo: dict[str, str]) -> None:
+    """sync_detalle hace upsert en organismos antes de setear el FK."""
+    from sqlalchemy import select
+
+    from app.db.session import AsyncSessionLocal
+    from app.models.licitacion import Licitacion
+    from app.models.organismo import Organismo
+
+    codigo_lic = f"ORG-{uuid.uuid4().hex[:6]}-L26"
+    # Código de prueba que no colisiona con datos de seed reales
+    codigo_org = 99901
+    detalle_response = _make_detalle_response_con_organismo(
+        codigo=codigo_lic,
+        codigo_org=codigo_org,
+    )
+
+    mock_client = AsyncMock()
+    mock_client.obtener_detalle_licitacion = AsyncMock(return_value=detalle_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.tasks.sync_detalle.MercadoPublicoClient", return_value=mock_client):
+        from app.tasks.sync_detalle import _run
+
+        result = await _run(codigo_lic)
+
+    assert result["nueva"] == 1, f"Esperado nueva=1, got: {result}"
+    assert result["error"] == 0
+
+    # Verificar que el organismo fue creado en la BD
+    async with AsyncSessionLocal() as session:
+        organismo = (
+            await session.execute(
+                select(Organismo).where(Organismo.codigo_organismo == codigo_org)
+            )
+        ).scalar_one_or_none()
+
+        assert (
+            organismo is not None
+        ), f"El organismo {codigo_org} debería existir en organismos"
+        assert organismo.nombre == f"Municipalidad Test {codigo_org}"
+        assert organismo.rut == "69.123.456-7"
+        assert organismo.region == "Región Metropolitana de Santiago"
+
+        # El FK en la licitación debe apuntar al organismo recién insertado
+        lic = await session.get(Licitacion, codigo_lic)
+        assert lic is not None
+        assert (
+            lic.codigo_organismo == codigo_org
+        ), f"FK codigo_organismo debería ser {codigo_org}, got {lic.codigo_organismo}"
+
+    # Cleanup — primero licitación (FK hijo), luego organismo
+    async with AsyncSessionLocal() as session:
+        lic_cleanup = await session.get(Licitacion, codigo_lic)
+        if lic_cleanup:
+            await session.delete(lic_cleanup)
+            await session.commit()
+
+    async with AsyncSessionLocal() as session:
+        org_cleanup = (
+            await session.execute(
+                select(Organismo).where(Organismo.codigo_organismo == codigo_org)
+            )
+        ).scalar_one_or_none()
+        if org_cleanup:
+            await session.delete(org_cleanup)
+            await session.commit()
