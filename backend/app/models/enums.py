@@ -124,3 +124,48 @@ class PipelineEstado(str, enum.Enum):
     adjudicada = "adjudicada"
     perdida = "perdida"
     descartada = "descartada"
+
+
+class NotifTipo(str, enum.Enum):
+    """Tipo de notificación. Refleja notif_tipo en schema.sql."""
+
+    nueva_oportunidad = "nueva_oportunidad"
+    recordatorio_cierre = "recordatorio_cierre"
+    cambio_estado = "cambio_estado"
+    adjudicacion_postulacion = "adjudicacion_postulacion"
+    oportunidad_futura = "oportunidad_futura"
+    sistema = "sistema"
+
+
+class NotifCanal(str, enum.Enum):
+    """Canal de envío de notificación. Refleja notif_canal en schema.sql."""
+
+    email = "email"
+    whatsapp = "whatsapp"
+    in_app = "in_app"
+
+
+class NotifStatus(str, enum.Enum):
+    """Estado de una notificación. Refleja notif_status en schema.sql."""
+
+    pendiente = "pendiente"
+    enviada = "enviada"
+    fallida = "fallida"
+    leida = "leida"
+    cancelada = "cancelada"
+
+
+class MensajeRol(str, enum.Enum):
+    """Rol de un mensaje en conversación IA. Refleja mensaje_rol en schema.sql."""
+
+    user = "user"
+    assistant = "assistant"
+    system = "system"
+
+
+class EmailFrecuencia(str, enum.Enum):
+    """Frecuencia de envío de emails. Refleja email_frecuencia en schema.sql."""
+
+    instantaneo = "instantaneo"
+    diario = "diario"
+    semanal = "semanal"
