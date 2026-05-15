@@ -79,3 +79,19 @@ class TicketResponse(BaseModel):
     cargado_at: datetime | None = None
 
     model_config = {"from_attributes": True, "populate_by_name": True}
+
+
+class ImpersonacionResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int = 3600
+
+
+class TicketDiagnosticoResponse(BaseModel):
+    tiene_ticket: bool
+    ticket_ultimos_4: str | None = None
+    ticket_status: str | None = None
+    llamadas_hoy: int
+    test_ok: bool | None = None
+    test_error: str | None = None
+    test_duracion_ms: int | None = None

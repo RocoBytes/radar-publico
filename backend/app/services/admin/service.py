@@ -5,6 +5,8 @@ Sin PII en logs (regla #12): solo IDs internos.
 """
 
 from datetime import UTC, datetime
+import time
+from typing import Any
 import uuid
 
 from sqlalchemy import func, select
@@ -267,3 +269,121 @@ class AdminService:
         await self._db.commit()
         await self._db.refresh(ticket)
         return ticket
+
+    async def impersonar_cuenta(
+        self,
+        usuario_id: uuid.UUID,
+        admin_id: uuid.UUID,
+    ) -> str:
+        """Genera token de impersonación (1h) y registra en auditoría."""
+        from app.core.security import create_impersonation_token
+
+        result = await self._db.execute(
+            select(Usuario).where(
+                Usuario.id == usuario_id,
+                Usuario.deleted_at.is_(None),
+            )
+        )
+        usuario = result.scalar_one_or_none()
+        if usuario is None:
+            raise CuentaNoEncontradaError
+
+        token = create_impersonation_token(str(usuario.id), str(admin_id))
+
+        await log_event(
+            self._db,
+            "admin.cuenta.impersonada",
+            usuario_id=admin_id,
+            recurso_tipo="usuario",
+            recurso_id=str(usuario_id),
+            info={"impersonado_usuario_id": str(usuario_id)},
+        )
+        await self._db.commit()
+
+        logger.info("admin_impersonacion", admin_id=str(admin_id), usuario_id=str(usuario_id))
+        return token
+
+    async def diagnosticar_ticket(
+        self,
+        usuario_id: uuid.UUID,
+        test_conexion: bool = False,
+    ) -> dict[str, Any]:
+        """Diagnóstica el ticket ChileCompra de una empresa.
+
+        Si test_conexion=True, hace una llamada real a la API (consume cuota).
+        """
+        from app.models.api_log import ApiQuotaLog
+
+        result = await self._db.execute(
+            select(Usuario)
+            .where(
+                Usuario.id == usuario_id,
+                Usuario.deleted_at.is_(None),
+            )
+            .options(
+                selectinload(Usuario.empresa).selectinload(Empresa.ticket),
+            )
+        )
+        usuario = result.scalar_one_or_none()
+        if usuario is None:
+            raise CuentaNoEncontradaError
+
+        empresa = usuario.empresa
+        if empresa is None or empresa.ticket is None:
+            return {
+                "tiene_ticket": False,
+                "ticket_ultimos_4": None,
+                "ticket_status": None,
+                "llamadas_hoy": 0,
+                "test_ok": None,
+                "test_error": None,
+                "test_duracion_ms": None,
+            }
+
+        ticket_obj = empresa.ticket
+
+        hoy_inicio = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        count_result = await self._db.execute(
+            select(func.count())
+            .select_from(ApiQuotaLog)
+            .where(
+                ApiQuotaLog.ticket_id == ticket_obj.id,
+                ApiQuotaLog.created_at >= hoy_inicio,
+            )
+        )
+        llamadas_hoy: int = count_result.scalar_one()
+
+        test_ok: bool | None = None
+        test_error: str | None = None
+        test_duracion_ms: int | None = None
+
+        if test_conexion:
+            from app.core.encryption import decrypt_ticket
+            from app.services.chilecompra.client import MercadoPublicoClient
+            from app.services.chilecompra.enums import EstadoLicitacion
+
+            try:
+                ticket_plaintext = decrypt_ticket(ticket_obj.ticket_cifrado)
+                t0 = time.monotonic()
+                async with MercadoPublicoClient() as client:
+                    await client.listar_licitaciones_por_estado(
+                        estado=EstadoLicitacion.ACTIVAS,
+                        ticket=ticket_plaintext,
+                        ticket_id=ticket_obj.id,
+                        empresa_id=empresa.id,
+                    )
+                test_duracion_ms = int((time.monotonic() - t0) * 1000)
+                test_ok = True
+            except Exception as exc:
+                test_ok = False
+                test_error = str(exc)[:300]
+
+        return {
+            "tiene_ticket": True,
+            "ticket_ultimos_4": ticket_obj.ticket_ultimos_4,
+            "ticket_status": ticket_obj.status.value if ticket_obj.status else None,
+            "llamadas_hoy": llamadas_hoy,
+            "test_ok": test_ok,
+            "test_error": test_error,
+            "test_duracion_ms": test_duracion_ms,
+        }

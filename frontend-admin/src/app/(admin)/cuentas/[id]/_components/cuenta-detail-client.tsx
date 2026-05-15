@@ -8,9 +8,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, Building2, Key } from "lucide-react";
+import { ChevronLeft, Building2, Key, UserCog, Activity } from "lucide-react";
 import { toast } from "sonner";
-import { obtenerCuenta, cambiarEstado, cargarTicket, ApiError } from "@/lib/api";
+import {
+  obtenerCuenta,
+  cambiarEstado,
+  cargarTicket,
+  impersonarCuenta,
+  diagnosticarTicket,
+  ApiError,
+} from "@/lib/api";
+import type { TicketDiagnosticoResponse } from "@/types/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,6 +83,10 @@ type CuentaDetailClientProps = {
 export function CuentaDetailClient({ id }: CuentaDetailClientProps) {
   const queryClient = useQueryClient();
   const [isChangingStatus, setIsChangingStatus] = useState(false);
+  const [impersonacionToken, setImpersonacionToken] = useState<string | null>(null);
+  const [isImpersonando, setIsImpersonando] = useState(false);
+  const [diagnostico, setDiagnostico] = useState<TicketDiagnosticoResponse | null>(null);
+  const [isDiagnosticando, setIsDiagnosticando] = useState(false);
 
   const { data: cuenta, isLoading, isError } = useQuery({
     queryKey: ["cuenta", id],
@@ -90,18 +102,46 @@ export function CuentaDetailClient({ id }: CuentaDetailClientProps) {
     resolver: zodResolver(ticketSchema),
   });
 
-  async function handleCambiarEstado(accion: "activar" | "suspender") {
+  async function handleCambiarEstado(accion: "reactivar" | "suspender") {
     setIsChangingStatus(true);
     try {
       await cambiarEstado(id, accion);
       await queryClient.invalidateQueries({ queryKey: ["cuenta", id] });
       await queryClient.invalidateQueries({ queryKey: ["cuentas"] });
-      toast.success(accion === "activar" ? "Cuenta activada" : "Cuenta suspendida");
+      toast.success(accion === "reactivar" ? "Cuenta activada" : "Cuenta suspendida");
     } catch (err) {
       const msg = err instanceof ApiError ? err.detail : "Error al cambiar estado";
       toast.error(msg);
     } finally {
       setIsChangingStatus(false);
+    }
+  }
+
+  async function handleImpersonar() {
+    setIsImpersonando(true);
+    try {
+      const res = await impersonarCuenta(id);
+      setImpersonacionToken(res.access_token);
+      await navigator.clipboard.writeText(res.access_token);
+      toast.success("Token copiado al portapapeles (expira en 1h)");
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.detail : "Error al generar token";
+      toast.error(msg);
+    } finally {
+      setIsImpersonando(false);
+    }
+  }
+
+  async function handleDiagnosticar(testConexion = false) {
+    setIsDiagnosticando(true);
+    try {
+      const res = await diagnosticarTicket(id, testConexion);
+      setDiagnostico(res);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.detail : "Error al diagnosticar";
+      toast.error(msg);
+    } finally {
+      setIsDiagnosticando(false);
     }
   }
 
@@ -152,12 +192,14 @@ export function CuentaDetailClient({ id }: CuentaDetailClientProps) {
     );
   }
 
-  const accionEstado = cuenta.status === "active" ? "suspender" : "activar";
-  const labelAccion = accionEstado === "activar" ? "Activar" : "Suspender";
+  const accionEstado = cuenta.status === "active" ? "suspender" : "reactivar";
+  const labelAccion = accionEstado === "reactivar" ? "Reactivar" : "Suspender";
   const descAccion =
     accionEstado === "suspender"
       ? "La cuenta quedará inaccesible para el usuario."
       : "La cuenta volverá a estar activa.";
+  const labelAccionDialog =
+    accionEstado === "reactivar" ? "Reactivar" : "Suspender";
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -204,7 +246,7 @@ export function CuentaDetailClient({ id }: CuentaDetailClientProps) {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>
-                    ¿{labelAccion} esta cuenta?
+                    ¿{labelAccionDialog} esta cuenta?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
                     {descAccion}
@@ -220,7 +262,7 @@ export function CuentaDetailClient({ id }: CuentaDetailClientProps) {
                         : ""
                     }
                   >
-                    Confirmar
+                    {labelAccionDialog}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -277,16 +319,83 @@ export function CuentaDetailClient({ id }: CuentaDetailClientProps) {
         </CardHeader>
         <CardContent>
           {cuenta.empresa?.tiene_ticket ? (
-            <div className="flex items-center gap-2">
-              <Badge
-                className="bg-green-100 text-green-800 hover:bg-green-100"
-                variant="outline"
-              >
-                Ticket activo
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                (los últimos dígitos se muestran en el perfil de empresa)
-              </span>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Badge
+                  className="bg-green-100 text-green-800 hover:bg-green-100"
+                  variant="outline"
+                >
+                  Ticket activo
+                </Badge>
+              </div>
+
+              {/* Diagnóstico */}
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleDiagnosticar(false)}
+                    disabled={isDiagnosticando}
+                  >
+                    {isDiagnosticando ? "Consultando..." : "Ver diagnóstico"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleDiagnosticar(true)}
+                    disabled={isDiagnosticando}
+                  >
+                    Probar conexión
+                  </Button>
+                </div>
+
+                {diagnostico && (
+                  <div className="rounded-md border p-3 space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">Últimos 4:</span>
+                      <span className="font-mono">
+                        ****{diagnostico.ticket_ultimos_4}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">
+                        Llamadas hoy:
+                      </span>
+                      <span className="font-semibold">
+                        {diagnostico.llamadas_hoy} / 10.000
+                      </span>
+                    </div>
+                    {diagnostico.test_ok !== null && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">
+                          Test conexión:
+                        </span>
+                        {diagnostico.test_ok ? (
+                          <Badge
+                            className="bg-green-100 text-green-800 hover:bg-green-100"
+                            variant="outline"
+                          >
+                            OK ({diagnostico.test_duracion_ms}ms)
+                          </Badge>
+                        ) : (
+                          <Badge
+                            className="bg-red-100 text-red-800 hover:bg-red-100"
+                            variant="outline"
+                          >
+                            Error
+                          </Badge>
+                        )}
+                        {diagnostico.test_error && (
+                          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                            {diagnostico.test_error}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -317,6 +426,74 @@ export function CuentaDetailClient({ id }: CuentaDetailClientProps) {
                   {isSubmitting ? "Cargando..." : "Cargar ticket"}
                 </Button>
               </form>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Impersonación */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <UserCog className="h-4 w-4" />
+            Impersonación
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Generá un token de acceso temporal (1h) para operar como este
+            proveedor. La acción queda registrada en auditoría.
+          </p>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isImpersonando || cuenta.status !== "active"}
+              >
+                <UserCog className="h-3.5 w-3.5 mr-1.5" />
+                {isImpersonando ? "Generando..." : "Generar token"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Generar token de impersonación?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Se generará un JWT de 1 hora con tu ID como administrador
+                  responsable. La acción queda en el log de auditoría.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => void handleImpersonar()}>
+                  Generar y copiar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {impersonacionToken && (
+            <div className="rounded-md border bg-muted/50 p-3 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Token copiado al portapapeles · expira en 1h
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="text-xs font-mono truncate flex-1">
+                  {impersonacionToken.slice(0, 40)}…
+                </code>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-xs"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(impersonacionToken);
+                    toast.success("Token copiado");
+                  }}
+                >
+                  Copiar
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

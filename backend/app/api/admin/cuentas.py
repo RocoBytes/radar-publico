@@ -19,6 +19,8 @@ from app.schemas.admin import (
     CuentaListResponse,
     CuentaResponse,
     EmpresaResumen,
+    ImpersonacionResponse,
+    TicketDiagnosticoResponse,
     TicketResponse,
 )
 from app.services.admin.exceptions import (
@@ -171,3 +173,48 @@ async def cargar_ticket(
         ) from None
 
     return TicketResponse.model_validate(ticket)
+
+
+@router.post("/{usuario_id}/impersonar", response_model=ImpersonacionResponse)
+async def impersonar_cuenta(
+    usuario_id: uuid.UUID,
+    db: DbDep,
+    admin: AdminUser,
+) -> ImpersonacionResponse:
+    """Genera token de impersonación (1h) para operar como el proveedor."""
+    svc = AdminService(db)
+    try:
+        token = await svc.impersonar_cuenta(
+            usuario_id=usuario_id,
+            admin_id=admin.id,
+        )
+    except CuentaNoEncontradaError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cuenta no encontrada",
+        ) from None
+
+    return ImpersonacionResponse(access_token=token)
+
+
+@router.get("/{usuario_id}/ticket/diagnostico", response_model=TicketDiagnosticoResponse)
+async def diagnosticar_ticket(
+    usuario_id: uuid.UUID,
+    db: DbDep,
+    _admin: AdminUser,
+    test_conexion: Annotated[bool, Query()] = False,
+) -> TicketDiagnosticoResponse:
+    """Diagnóstica el ticket ChileCompra: estado, cuota y test opcional de conexión."""
+    svc = AdminService(db)
+    try:
+        result = await svc.diagnosticar_ticket(
+            usuario_id=usuario_id,
+            test_conexion=test_conexion,
+        )
+    except CuentaNoEncontradaError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cuenta no encontrada",
+        ) from None
+
+    return TicketDiagnosticoResponse(**result)

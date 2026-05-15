@@ -70,6 +70,23 @@ def decode_access_token(token: str) -> AccessTokenPayload:
         raise InvalidTokenError(str(exc)) from exc
 
 
+def create_impersonation_token(subject: str, admin_id: str) -> str:
+    """Crea JWT de impersonación (1h) con claim extra impersonated_by_admin_id.
+
+    Regla de oro #14: la acción se registra en eventos_auditoria por el caller.
+    """
+    now = datetime.now(UTC)
+    payload = {
+        "sub": subject,
+        "iat": now,
+        "exp": now + timedelta(hours=1),
+        "type": "access",
+        "impersonated_by_admin_id": admin_id,
+    }
+    encoded = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return str(encoded)
+
+
 def create_refresh_token() -> tuple[str, str]:
     """Genera un refresh token. Retorna (plaintext, sha256_hex)."""
     plaintext = secrets.token_urlsafe(48)

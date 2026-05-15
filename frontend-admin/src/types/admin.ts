@@ -40,3 +40,19 @@ export type TicketResponse = {
   status: string;
   created_at: string;
 };
+
+export type ImpersonacionResponse = {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+};
+
+export type TicketDiagnosticoResponse = {
+  tiene_ticket: boolean;
+  ticket_ultimos_4: string | null;
+  ticket_status: string | null;
+  llamadas_hoy: number;
+  test_ok: boolean | null;
+  test_error: string | null;
+  test_duracion_ms: number | null;
+};
