@@ -25,6 +25,7 @@ Reglas de oro que aplican:
 """
 
 import asyncio
+import calendar
 import contextlib
 from datetime import UTC, datetime
 import hashlib
@@ -62,6 +63,15 @@ _FECHA_MAP: dict[str, FechaTipo] = {
     "FechaPubRespuestas": FechaTipo.respuestas,
     "FechaEstimadaFirma": FechaTipo.firma_contrato,
 }
+
+
+def _add_months(dt: datetime, months: int) -> datetime:
+    """Suma N meses a una fecha manejando desborde de días correctamente."""
+    month = dt.month - 1 + months
+    year = dt.year + month // 12
+    month = month % 12 + 1
+    day = min(dt.day, calendar.monthrange(year, month)[1])
+    return dt.replace(year=year, month=month, day=day)
 
 
 def _hash_detalle(payload: dict[str, Any]) -> str:
@@ -257,6 +267,28 @@ async def _run(codigo: str) -> dict[str, int]:
                 lic.moneda = detalle.Moneda
             if detalle.EsRenovable is not None:
                 lic.es_renovable = bool(detalle.EsRenovable)
+
+            # Duración del contrato → duracion_estimada_meses y fecha_estimada_termino_contrato
+            # UnidadTiempoDuracionContrato: 1=días, 2=meses, 3=años (convención ChileCompra)
+            if detalle.TiempoDuracionContrato is not None:
+                with contextlib.suppress(ValueError, TypeError):
+                    tiempo = int(detalle.TiempoDuracionContrato)
+                    unidad = detalle.UnidadTiempoDuracionContrato
+                    lic.tiempo_contrato = tiempo
+                    lic.unidad_tiempo_contrato = unidad
+
+                    if unidad == 1:
+                        meses = max(1, round(tiempo / 30))
+                    elif unidad == 3:
+                        meses = tiempo * 12
+                    else:
+                        meses = tiempo  # 2=meses o desconocido → asumir meses
+
+                    lic.duracion_estimada_meses = meses
+
+                    fecha_adj = detalle.Fechas.FechaAdjudicacion if detalle.Fechas else None
+                    if fecha_adj is not None and meses > 0:
+                        lic.fecha_estimada_termino_contrato = _add_months(fecha_adj, meses)
 
             # Items — delete + insert.
             # Más simple y correcto que upsert parcial cuando el número de

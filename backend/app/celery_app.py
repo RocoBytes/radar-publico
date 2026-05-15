@@ -24,6 +24,7 @@ celery_app = Celery(
         "app.tasks.ejecuta_radares",  # Sprint 4: ejecucion de radares
         "app.tasks.procesar_notificaciones",  # Sprint 5: despacho de notificaciones
         "app.tasks.generar_recordatorios",  # Sprint 5: recordatorios de cierre
+        "app.tasks.detecta_renovaciones",  # Sprint 6: feed de renovaciones
     ],
 )
 
@@ -73,5 +74,10 @@ celery_app.conf.beat_schedule = {
         "task": "tasks.generar_recordatorios.generar_recordatorios_cierre",
         "schedule": 3600.0,  # cada hora
         "options": {"expires": 3500},
+    },
+    "detecta-renovaciones": {
+        "task": "tasks.detecta_renovaciones.detecta_renovaciones",
+        "schedule": 86400.0,  # una vez al día
+        "options": {"expires": 85000},
     },
 }

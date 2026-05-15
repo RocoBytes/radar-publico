@@ -6,6 +6,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.chat import router as chat_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.empresa import router as empresa_router
+from app.api.v1.futuro import router as futuro_router
 from app.api.v1.health import router as health_router
 from app.api.v1.inteligencia import router as inteligencia_router
 from app.api.v1.intereses import router as intereses_router
@@ -25,6 +26,7 @@ router.include_router(intereses_router)
 router.include_router(radares_router)
 router.include_router(pipeline_router)
 router.include_router(dashboard_router)
+router.include_router(futuro_router)
 router.include_router(notificaciones_router)
 router.include_router(preferencias_router)
 router.include_router(chat_router, prefix="/chat", tags=["chat"])
