@@ -1,6 +1,7 @@
 """Tests unitarios para los endpoints del pipeline.
 
 Cubre:
+  POST   /api/v1/pipeline
   GET    /api/v1/pipeline
   GET    /api/v1/pipeline/{id}
   PATCH  /api/v1/pipeline/{id}
@@ -510,3 +511,109 @@ async def test_eliminar_nota_ajena_retorna_403(
         headers=_auth_headers(str(user_b.id)),
     )
     assert resp_del.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# POST /pipeline — crear ítem manualmente
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_crear_pipeline_item_ok(
+    client: AsyncClient,
+    empresa_con_usuario: tuple[Any, Any],
+    licitacion_basica: Licitacion,
+) -> None:
+    user, _ = empresa_con_usuario
+    resp = await client.post(
+        "/api/v1/pipeline",
+        json={"licitacion_codigo": licitacion_basica.codigo},
+        headers=_auth_headers(str(user.id)),
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["licitacion"]["codigo"] == licitacion_basica.codigo
+    assert data["estado"] == "nueva"
+    assert data["score"] is None
+
+
+@pytest.mark.asyncio
+async def test_crear_pipeline_item_licitacion_inexistente(
+    client: AsyncClient,
+    empresa_con_usuario: tuple[Any, Any],
+) -> None:
+    user, _ = empresa_con_usuario
+    resp = await client.post(
+        "/api/v1/pipeline",
+        json={"licitacion_codigo": "NO-EXISTE-9999"},
+        headers=_auth_headers(str(user.id)),
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_crear_pipeline_item_duplicado_retorna_409(
+    client: AsyncClient,
+    empresa_con_usuario: tuple[Any, Any],
+    pipeline_item: PipelineItem,
+) -> None:
+    user, _ = empresa_con_usuario
+    resp = await client.post(
+        "/api/v1/pipeline",
+        json={"licitacion_codigo": pipeline_item.licitacion_codigo},
+        headers=_auth_headers(str(user.id)),
+    )
+    assert resp.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_crear_pipeline_item_sin_auth(client: AsyncClient) -> None:
+    resp = await client.post(
+        "/api/v1/pipeline",
+        json={"licitacion_codigo": "TEST-PIPE-001"},
+    )
+    assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET /pipeline — filtro licitacion_codigo
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_listar_pipeline_filtro_licitacion_codigo(
+    client: AsyncClient,
+    empresa_con_usuario: tuple[Any, Any],
+    pipeline_item: PipelineItem,
+    db_session: AsyncSession,
+) -> None:
+    user, empresa = empresa_con_usuario
+
+    # Crear segunda licitación y su pipeline item
+    await db_session.execute(
+        pg_insert(Licitacion)
+        .values(
+            codigo="TEST-PIPE-OTRA",
+            nombre="Otra licitación",
+            estado=LicitacionEstado.publicada,
+            moneda="CLP",
+        )
+        .on_conflict_do_nothing(index_elements=["codigo"])
+    )
+    await db_session.commit()
+    otro_item = PipelineItem(
+        empresa_id=empresa.id,
+        licitacion_codigo="TEST-PIPE-OTRA",
+    )
+    db_session.add(otro_item)
+    await db_session.commit()
+
+    resp = await client.get(
+        "/api/v1/pipeline",
+        params={"licitacion_codigo": pipeline_item.licitacion_codigo},
+        headers=_auth_headers(str(user.id)),
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["licitacion"]["codigo"] == pipeline_item.licitacion_codigo
