@@ -84,6 +84,12 @@ class PipelineItemUpdateRequest(BaseModel):
     resultado_observaciones: str | None = Field(default=None, max_length=5000)
 
 
+class PipelineItemCreateRequest(BaseModel):
+    """Datos para agregar manualmente una licitación al pipeline."""
+
+    licitacion_codigo: str = Field(min_length=1, max_length=50)
+
+
 class PipelineNotaCreateRequest(BaseModel):
     """Datos para crear una nota en un ítem del pipeline."""
 

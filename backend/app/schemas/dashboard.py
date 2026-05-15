@@ -53,3 +53,31 @@ class DashboardSegmentosResponse(BaseModel):
     """Respuesta del endpoint GET /dashboard/segmentos."""
 
     segmentos: list[SegmentoItem]
+
+
+class TendenciaMes(BaseModel):
+    """Cantidad y monto de licitaciones en un mes dado."""
+
+    mes: str  # formato "YYYY-MM" (ej: "2025-01")
+    cantidad: int
+    monto_total: float | None
+
+
+class DashboardTendenciaResponse(BaseModel):
+    """Respuesta del endpoint GET /dashboard/tendencia."""
+
+    datos: list[TendenciaMes]
+
+
+class TopOrganismo(BaseModel):
+    """Organismo con mayor cantidad de licitaciones en un período."""
+
+    nombre: str
+    cantidad: int
+    monto_total: float | None
+
+
+class DashboardTopOrganismosResponse(BaseModel):
+    """Respuesta del endpoint GET /dashboard/top-organismos."""
+
+    organismos: list[TopOrganismo]
