@@ -1,5 +1,6 @@
 """Endpoints REST para el pipeline de seguimiento de licitaciones.
 
+POST   /api/v1/pipeline            — agregar licitación al pipeline manualmente
 GET    /api/v1/pipeline            — listado paginado con filtros
 GET    /api/v1/pipeline/{id}       — detalle con notas
 PATCH  /api/v1/pipeline/{id}       — actualizar estado y campos de seguimiento
@@ -16,11 +17,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, DbDep, EmpresaDep
-from app.models.enums import PipelineEstado
+from app.models.enums import NotifCanal, NotifStatus, NotifTipo, PipelineEstado
 from app.models.licitacion import Licitacion
+from app.models.notificacion import Notificacion
 from app.models.pipeline import PipelineItem, PipelineNota
 from app.schemas.pipeline import (
     LicitacionEnPipelineResponse,
+    PipelineItemCreateRequest,
     PipelineItemListItem,
     PipelineItemResponse,
     PipelineItemUpdateRequest,
@@ -123,6 +126,59 @@ def _build_detail(item: PipelineItem) -> PipelineItemResponse:
 
 
 # ---------------------------------------------------------------------------
+# POST /pipeline
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "",
+    response_model=PipelineItemResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def crear_pipeline_item(
+    data: PipelineItemCreateRequest,
+    db: DbDep,
+    current_user: CurrentUser,
+    empresa: EmpresaDep,
+) -> PipelineItemResponse:
+    """Agrega manualmente una licitación al pipeline de la empresa.
+
+    Retorna 404 si la licitación no existe.
+    Retorna 409 si ya está en el pipeline de esta empresa.
+    """
+    lic_result = await db.execute(
+        select(Licitacion).where(Licitacion.codigo == data.licitacion_codigo)
+    )
+    if lic_result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Licitación '{data.licitacion_codigo}' no encontrada",
+        )
+
+    existing = await db.execute(
+        select(PipelineItem).where(
+            PipelineItem.empresa_id == empresa.id,
+            PipelineItem.licitacion_codigo == data.licitacion_codigo,
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"La licitación '{data.licitacion_codigo}' ya está en el pipeline",
+        )
+
+    item = PipelineItem(
+        empresa_id=empresa.id,
+        licitacion_codigo=data.licitacion_codigo,
+    )
+    db.add(item)
+    await db.commit()
+
+    item = await _get_item_de_empresa_o_404(item.id, empresa.id, db, con_notas=True)
+    return _build_detail(item)
+
+
+# ---------------------------------------------------------------------------
 # GET /pipeline
 # ---------------------------------------------------------------------------
 
@@ -134,12 +190,13 @@ async def listar_pipeline(
     empresa: EmpresaDep,
     estado: PipelineEstado | None = Query(default=None),  # noqa: B008
     score_min: int | None = Query(default=None, ge=0, le=100),
+    licitacion_codigo: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
 ) -> PipelineListResponse:
     """Lista los ítems del pipeline de la empresa, ordenados por score DESC.
 
-    Filtra opcionalmente por estado y score_min.
+    Filtra opcionalmente por estado, score_min y licitacion_codigo.
     """
 
     base = select(PipelineItem).where(PipelineItem.empresa_id == empresa.id)
@@ -147,6 +204,8 @@ async def listar_pipeline(
         base = base.where(PipelineItem.estado == estado)
     if score_min is not None:
         base = base.where(PipelineItem.score >= score_min)
+    if licitacion_codigo is not None:
+        base = base.where(PipelineItem.licitacion_codigo == licitacion_codigo)
 
     # Total para la paginación
     count_result = await db.execute(
@@ -217,6 +276,10 @@ async def actualizar_pipeline_item(
     """
     item = await _get_item_de_empresa_o_404(item_id, empresa.id, db, con_notas=True)
 
+    # Capturar nombre antes del commit (evitar acceso lazy post-refresh)
+    licitacion_nombre: str = item.licitacion.nombre or ""
+    estado_anterior = item.estado
+
     if data.estado is not None:
         item.estado = data.estado
     if data.razon_descarte is not None:
@@ -228,7 +291,21 @@ async def actualizar_pipeline_item(
 
     item.updated_at = datetime.now(UTC)
     await db.commit()
-    await db.refresh(item)
+
+    # Notificación cambio_estado: solo in_app, se crea si el estado fue modificado
+    if data.estado is not None and data.estado != estado_anterior:
+        notif = Notificacion(
+            empresa_id=empresa.id,
+            tipo=NotifTipo.cambio_estado,
+            canal=NotifCanal.in_app,
+            status=NotifStatus.pendiente,
+            titulo=f"Estado actualizado: {licitacion_nombre[:60]}",
+            cuerpo=f"La licitación fue marcada como '{data.estado.value}'.",
+            licitacion_codigo=item.licitacion_codigo,
+            programada_para=datetime.now(UTC),
+        )
+        db.add(notif)
+        await db.commit()
 
     # Recargar con relaciones después del commit
     item = await _get_item_de_empresa_o_404(item_id, empresa.id, db, con_notas=True)

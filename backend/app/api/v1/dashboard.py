@@ -15,13 +15,18 @@ from app.models.catalogos import Unspsc
 from app.models.enums import LicitacionEstado
 from app.models.interes import Interes, InteresTipo
 from app.models.licitacion import Licitacion, LicitacionItem
+from app.models.organismo import Organismo
 from app.models.pipeline import PipelineItem
 from app.schemas.dashboard import (
     DashboardResumenResponse,
     DashboardSegmentosResponse,
+    DashboardTendenciaResponse,
+    DashboardTopOrganismosResponse,
     LicitacionEnTopResponse,
     SegmentoItem,
+    TendenciaMes,
     TopOportunidad,
+    TopOrganismo,
 )
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -222,3 +227,82 @@ async def obtener_segmentos(
     ]
 
     return DashboardSegmentosResponse(segmentos=segmentos)
+
+
+# ---------------------------------------------------------------------------
+# GET /dashboard/tendencia
+# ---------------------------------------------------------------------------
+
+
+@router.get("/tendencia", response_model=DashboardTendenciaResponse)
+async def obtener_tendencia(
+    db: DbDep,
+    current_user: CurrentUser,
+    empresa: EmpresaDep,
+    meses: int = Query(default=12, ge=1, le=24),
+) -> DashboardTendenciaResponse:
+    """Cantidad y monto total de licitaciones por mes para los últimos N meses."""
+    fecha_inicio = datetime.now(UTC) - timedelta(days=meses * 30)
+
+    result = await db.execute(
+        select(
+            func.date_trunc("month", Licitacion.fecha_publicacion).label("mes"),
+            func.count(Licitacion.codigo).label("cantidad"),
+            func.sum(Licitacion.monto_estimado).label("monto_total"),
+        )
+        .where(Licitacion.fecha_publicacion >= fecha_inicio)
+        .group_by(func.date_trunc("month", Licitacion.fecha_publicacion))
+        .order_by(func.date_trunc("month", Licitacion.fecha_publicacion))
+    )
+
+    datos = [
+        TendenciaMes(
+            mes=row.mes.strftime("%Y-%m"),
+            cantidad=row.cantidad,
+            monto_total=float(row.monto_total) if row.monto_total is not None else None,
+        )
+        for row in result.all()
+    ]
+
+    return DashboardTendenciaResponse(datos=datos)
+
+
+# ---------------------------------------------------------------------------
+# GET /dashboard/top-organismos
+# ---------------------------------------------------------------------------
+
+
+@router.get("/top-organismos", response_model=DashboardTopOrganismosResponse)
+async def obtener_top_organismos(
+    db: DbDep,
+    current_user: CurrentUser,
+    empresa: EmpresaDep,
+    top: int = Query(default=10, ge=1, le=50),
+    meses: int = Query(default=12, ge=1, le=24),
+) -> DashboardTopOrganismosResponse:
+    """Top N organismos con mayor cantidad de licitaciones en los últimos N meses."""
+    fecha_inicio = datetime.now(UTC) - timedelta(days=meses * 30)
+
+    result = await db.execute(
+        select(
+            Organismo.nombre,
+            func.count(Licitacion.codigo).label("cantidad"),
+            func.sum(Licitacion.monto_estimado).label("monto_total"),
+        )
+        .join(Organismo, Licitacion.codigo_organismo == Organismo.codigo_organismo)
+        .where(Licitacion.fecha_publicacion >= fecha_inicio)
+        .group_by(Organismo.nombre)
+        .order_by(func.count(Licitacion.codigo).desc())
+        .limit(top)
+    )
+
+    organismos = [
+        TopOrganismo(
+            nombre=row.nombre,
+            cantidad=row.cantidad,
+            monto_total=float(row.monto_total) if row.monto_total is not None else None,
+        )
+        for row in result.all()
+    ]
+
+    return DashboardTopOrganismosResponse(organismos=organismos)
