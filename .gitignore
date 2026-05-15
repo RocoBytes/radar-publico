@@ -117,6 +117,7 @@ docker-compose.override.yml
 *~
 .cursor/
 .zed/
+.windsurf/
 
 # === Sistema operativo ===
 .DS_Store
