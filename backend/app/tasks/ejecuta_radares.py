@@ -29,7 +29,7 @@ from sqlalchemy.orm import selectinload
 import structlog
 
 from app.celery_app import celery_app
-from app.models.enums import LicitacionEstado
+from app.models.enums import LicitacionEstado, NotifCanal, NotifStatus, NotifTipo
 
 logger = structlog.get_logger()
 
@@ -40,6 +40,7 @@ async def _ejecutar_radar(radar_id: UUID) -> dict[str, int]:
     from app.db.session import AsyncSessionLocal
     from app.models.empresa import Empresa
     from app.models.licitacion import Licitacion, LicitacionItem
+    from app.models.notificacion import Notificacion
     from app.models.pipeline import PipelineItem
     from app.models.radar import Radar
     from app.services.scoring.relevance import calcular_score
@@ -155,6 +156,39 @@ async def _ejecutar_radar(radar_id: UUID) -> dict[str, int]:
                     score_justificacion=justificacion,
                 )
                 session.add(item)
+
+                # Notificación nueva_oportunidad si cumple umbral de score
+                notif_score_min = radar.notif_score_minimo
+                if notif_score_min is None or score is None or score >= notif_score_min:
+                    organismo_nombre: str = (
+                        licitacion.organismo.nombre
+                        if licitacion.organismo is not None
+                        else "organismo desconocido"
+                    )
+                    # Determinar canal: solo email e in_app soportados
+                    canal_str = radar.notif_canal
+                    if canal_str in ("email", "in_app"):
+                        canal = NotifCanal[canal_str]
+                    else:
+                        canal = NotifCanal.in_app
+
+                    nombre_truncado = (licitacion.nombre or "")[:80]
+                    notif = Notificacion(
+                        empresa_id=radar.empresa_id,
+                        tipo=NotifTipo.nueva_oportunidad,
+                        canal=canal,
+                        status=NotifStatus.pendiente,
+                        titulo=f"Nueva oportunidad: {nombre_truncado}",
+                        cuerpo=(
+                            f"El radar '{radar.nombre}' detectó una nueva licitación "
+                            f"de {organismo_nombre}."
+                        ),
+                        licitacion_codigo=licitacion.codigo,
+                        radar_id=radar_id,
+                        programada_para=datetime.now(UTC),
+                    )
+                    session.add(notif)
+
                 stats["nuevos"] += 1
             except Exception as exc:
                 logger.error(

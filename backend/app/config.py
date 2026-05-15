@@ -49,7 +49,11 @@ class Settings(BaseSettings):
     email_from: str = "alertas@radarpublico.cl"
 
     # === CORS ===
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    # Incluye puerto 3001 para el panel admin en desarrollo
+    cors_origins: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "http://localhost:3001,http://127.0.0.1:3001"
+    )
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -74,6 +78,9 @@ class Settings(BaseSettings):
     # === Procesamiento PDF ===
     pdf_chunk_tokens: int = 800
     pdf_chunk_overlap: int = 100
+
+    # === Frontend ===
+    frontend_url: str = "http://localhost:3000"
 
     # === Seed / Admin inicial ===
     admin_email: str = ""

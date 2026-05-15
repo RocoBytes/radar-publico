@@ -22,8 +22,8 @@ celery_app = Celery(
         "app.tasks.marcar_procesada",  # Sprint 2: marcar licitación procesada
         "app.tasks.recalcula_scores",  # Sprint 4: scoring de relevancia
         "app.tasks.ejecuta_radares",  # Sprint 4: ejecucion de radares
-        # Sprint 3+:
-        # "app.tasks.notifications",
+        "app.tasks.procesar_notificaciones",  # Sprint 5: despacho de notificaciones
+        "app.tasks.generar_recordatorios",  # Sprint 5: recordatorios de cierre
     ],
 )
 
@@ -63,5 +63,15 @@ celery_app.conf.beat_schedule = {
         "task": "tasks.ejecuta_radares.ejecuta_radares_diarios",
         "schedule": 900.0,  # cada 15 min, encadenado al sync
         "options": {"expires": 800},
+    },
+    "procesar-notificaciones": {
+        "task": "tasks.procesar_notificaciones.procesar_notificaciones",
+        "schedule": 300.0,  # cada 5 minutos
+        "options": {"expires": 280},
+    },
+    "generar-recordatorios-cierre": {
+        "task": "tasks.generar_recordatorios.generar_recordatorios_cierre",
+        "schedule": 3600.0,  # cada hora
+        "options": {"expires": 3500},
     },
 }
