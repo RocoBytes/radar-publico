@@ -73,7 +73,7 @@ export function LoginForm() {
   }
 
   return (
-    <div className="rounded-lg border bg-white p-6 shadow-sm">
+    <div className="rounded-xl bg-white p-7 shadow-xl ring-1 ring-black/5">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <FormField

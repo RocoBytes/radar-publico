@@ -1,7 +1,14 @@
 "use client"
 
+import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
-import { format, isWithinInterval, startOfDay, addDays } from "date-fns"
+import {
+  differenceInCalendarDays,
+  format,
+  isWithinInterval,
+  startOfDay,
+  addDays,
+} from "date-fns"
 import { es } from "date-fns/locale"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -41,24 +48,47 @@ function estadoBadgeClass(estado: string): string {
 
 function CierreRow({ item }: { item: PipelineListItem }) {
   const fecha = new Date(item.licitacion.fecha_cierre!)
+  const hoy = startOfDay(new Date())
+  const diasRestantes = differenceInCalendarDays(fecha, hoy)
+  const esUrgente = diasRestantes <= 1
 
   return (
-    <div className="flex items-center gap-3 py-2">
-      <div className="flex w-10 flex-col items-center rounded bg-muted px-1 py-0.5 text-center">
-        <span className="text-xs font-bold leading-tight">
+    <Link
+      href={`/pipeline/${item.id}`}
+      className="flex cursor-pointer items-center gap-3 rounded-md px-1 py-2 transition-colors hover:bg-muted/50"
+    >
+      <div
+        className={`flex w-10 shrink-0 flex-col items-center rounded px-1 py-0.5 text-center ${
+          esUrgente ? "bg-amber-100" : "bg-muted"
+        }`}
+      >
+        <span
+          className={`text-xs font-bold leading-tight ${esUrgente ? "text-amber-800" : ""}`}
+        >
           {format(fecha, "d", { locale: es })}
         </span>
-        <span className="text-xs uppercase leading-tight text-muted-foreground">
+        <span
+          className={`text-[10px] uppercase leading-tight ${
+            esUrgente ? "text-amber-600" : "text-muted-foreground"
+          }`}
+        >
           {format(fecha, "MMM", { locale: es })}
         </span>
       </div>
+
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.licitacion.nombre}</p>
+        {esUrgente && (
+          <p className="text-xs font-semibold text-amber-600">
+            {diasRestantes === 0 ? "Cierra hoy" : "Cierra mañana"}
+          </p>
+        )}
       </div>
+
       <Badge className={estadoBadgeClass(item.estado)}>
         {ESTADO_LABEL[item.estado] ?? item.estado}
       </Badge>
-    </div>
+    </Link>
   )
 }
 
@@ -104,7 +134,7 @@ export function CierresProximos() {
           </p>
         ) : (
           <ScrollArea className="h-48">
-            <div className="divide-y">
+            <div className="space-y-0.5">
               {proximos.map((item) => (
                 <CierreRow key={item.id} item={item} />
               ))}

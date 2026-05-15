@@ -48,13 +48,13 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   const d = payload[0]?.payload
   if (!d) return null
   return (
-    <div className="max-w-[220px] rounded-md border bg-white px-3 py-2 text-sm shadow-md">
-      <p className="font-medium leading-snug">{d.nombreCompleto}</p>
-      <p className="text-muted-foreground">
+    <div className="max-w-[220px] rounded-lg border bg-white px-3 py-2 shadow-lg">
+      <p className="text-xs font-medium leading-snug text-foreground">{d.nombreCompleto}</p>
+      <p className="mt-0.5 text-sm font-bold text-primary">
         {d.cantidad} licitacion{d.cantidad !== 1 ? "es" : ""}
       </p>
       {d.monto_total !== null && (
-        <p className="text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Monto: {formatMonto(d.monto_total)}
         </p>
       )}
@@ -93,20 +93,28 @@ export function TopOrganismosChart() {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={organismos} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" tick={{ fontSize: 12 }} />
+            <BarChart data={organismos} layout="vertical" margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 20% 88%)" horizontal={false} />
+              <XAxis
+                type="number"
+                tick={{ fontSize: 11, fill: "hsl(215 16% 47%)" }}
+                tickLine={false}
+                axisLine={{ stroke: "hsl(220 20% 88%)" }}
+              />
               <YAxis
                 type="category"
                 dataKey="nombre"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: "hsl(215 16% 47%)" }}
+                tickLine={false}
+                axisLine={false}
                 width={130}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(220 14% 96%)" }} />
               <Bar
                 dataKey="cantidad"
                 fill="hsl(var(--primary))"
                 radius={[0, 4, 4, 0]}
+                maxBarSize={20}
               />
             </BarChart>
           </ResponsiveContainer>

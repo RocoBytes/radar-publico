@@ -3,7 +3,16 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useRef, useState } from "react"
-import { LayoutDashboard, Search, Kanban, Radar, BarChart2, Settings, LogOut, Bell } from "lucide-react"
+import {
+  LayoutDashboard,
+  Search,
+  Kanban,
+  Radar,
+  BarChart2,
+  Settings,
+  LogOut,
+  Bell,
+} from "lucide-react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -65,12 +74,12 @@ function NotifBell() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        className="relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         aria-label="Notificaciones"
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white leading-none">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-semibold leading-none text-white">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -78,16 +87,12 @@ function NotifBell() {
 
       {open && (
         <>
-          {/* Overlay para cerrar al hacer click afuera */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute left-full top-0 z-50 ml-2 w-72 rounded-md border bg-white shadow-lg">
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute bottom-full left-0 z-50 mb-2 w-72 rounded-lg border bg-white shadow-xl">
             <div className="flex items-center justify-between border-b px-4 py-2.5">
               <span className="text-sm font-semibold">Notificaciones</span>
               {unreadCount > 0 && (
-                <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
                   {unreadCount} sin leer
                 </span>
               )}
@@ -98,12 +103,12 @@ function NotifBell() {
                 No tenés notificaciones
               </p>
             ) : (
-              <ul className="max-h-80 overflow-y-auto divide-y">
+              <ul className="max-h-80 divide-y overflow-y-auto">
                 {items.map((notif) => (
                   <li key={notif.id}>
                     <button
                       type="button"
-                      className={`w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors ${
+                      className={`w-full cursor-pointer px-4 py-3 text-left transition-colors hover:bg-muted/50 ${
                         notif.leida_at === null ? "bg-blue-50/60" : ""
                       }`}
                       onClick={() => void handleClickItem(notif)}
@@ -117,9 +122,7 @@ function NotifBell() {
                         </span>
                       </div>
                       <span className="mt-1 block text-xs text-muted-foreground">
-                        {format(new Date(notif.created_at), "dd/MM HH:mm", {
-                          locale: es,
-                        })}
+                        {format(new Date(notif.created_at), "dd/MM HH:mm", { locale: es })}
                       </span>
                     </button>
                   </li>
@@ -141,21 +144,27 @@ export function Sidebar({ user }: { user: SidebarUser }) {
   async function handleLogout() {
     setIsLoggingOut(true)
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      })
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" })
     } finally {
       router.push("/login")
     }
   }
 
+  const initial = (user.empresa?.razon_social ?? user.email).charAt(0).toUpperCase()
+
   return (
-    <aside className="flex h-screen w-64 flex-col border-r bg-white">
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-5 py-5">
-        <span className="text-lg font-bold tracking-tight">Radar Público</span>
-        <Badge variant="secondary" className="text-xs">
+    <aside className="flex h-screen w-64 flex-col border-r bg-white shadow-sm">
+      {/* Brand */}
+      <div className="flex items-center gap-2.5 px-5 py-5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+          <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
+            <circle cx="5" cy="19" r="2.5" fill="currentColor" />
+            <path d="M5 13a6 6 0 0 1 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M5 7a12 12 0 0 1 12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </div>
+        <span className="text-base font-bold tracking-tight">Radar Público</span>
+        <Badge variant="secondary" className="h-4 px-1.5 py-0 text-[10px]">
           beta
         </Badge>
       </div>
@@ -163,18 +172,17 @@ export function Sidebar({ user }: { user: SidebarUser }) {
       <Separator />
 
       {/* Nav */}
-      <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
+      <nav className="flex flex-1 flex-col gap-0.5 px-3 py-3">
         {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
-          const isActive =
-            pathname === href || pathname.startsWith(`${href}/`)
+          const isActive = pathname === href || pathname.startsWith(`${href}/`)
           return (
             <Link
               key={href}
               href={href}
               className={
                 isActive
-                  ? "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium bg-primary/10 text-primary"
-                  : "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  ? "-ml-0.5 flex items-center gap-3 rounded-md border-l-2 border-primary bg-primary/10 py-2 pl-[11px] pr-3 text-sm font-semibold text-primary transition-colors"
+                  : "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               }
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -182,34 +190,35 @@ export function Sidebar({ user }: { user: SidebarUser }) {
             </Link>
           )
         })}
-
-        {/* Campana de notificaciones */}
-        <div className="mt-1 flex items-center gap-3 px-3 py-1">
-          <NotifBell />
-          <span className="text-sm text-muted-foreground">Notificaciones</span>
-        </div>
       </nav>
 
       <Separator />
 
-      {/* User + logout */}
-      <div className="flex flex-col gap-2 px-4 py-4">
-        <div className="flex flex-col gap-0.5">
-          {user.empresa && (
-            <span className="text-sm font-medium truncate">
-              {user.empresa.razon_social}
+      {/* User + notif + logout */}
+      <div className="flex flex-col gap-2.5 px-4 py-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+            {initial}
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col">
+            {user.empresa && (
+              <span className="truncate text-sm font-medium leading-tight">
+                {user.empresa.razon_social}
+              </span>
+            )}
+            <span className="truncate text-xs leading-tight text-muted-foreground">
+              {user.email}
             </span>
-          )}
-          <span className="text-xs text-muted-foreground truncate">
-            {user.email}
-          </span>
+          </div>
+          <NotifBell />
         </div>
+
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="w-full justify-start gap-2"
+          className="w-full cursor-pointer justify-start gap-2 text-muted-foreground hover:text-foreground"
         >
           <LogOut className="h-3.5 w-3.5" />
           {isLoggingOut ? "Cerrando sesión…" : "Cerrar sesión"}

@@ -128,19 +128,17 @@ export function EmpresaForm() {
       <CardContent>
         {/* Campos de solo lectura */}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              RUT
-            </p>
-            <p className="text-sm text-muted-foreground">{data?.rut ?? "—"}</p>
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium leading-none">RUT</p>
+            <div className="flex h-9 items-center rounded-md border border-border bg-muted/50 px-3 text-sm text-muted-foreground">
+              {data?.rut ?? "—"}
+            </div>
           </div>
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Razón social
-            </p>
-            <p className="text-sm text-muted-foreground">
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium leading-none">Razón social</p>
+            <div className="flex h-9 items-center rounded-md border border-border bg-muted/50 px-3 text-sm text-muted-foreground">
               {data?.razon_social ?? "—"}
-            </p>
+            </div>
           </div>
         </div>
 
@@ -171,7 +169,7 @@ export function EmpresaForm() {
                 <FormItem>
                   <FormLabel>Tamaño de empresa</FormLabel>
                   <Select
-                    onValueChange={(v) =>
+                    onValueChange={(v: string) =>
                       field.onChange(
                         v === "none"
                           ? null

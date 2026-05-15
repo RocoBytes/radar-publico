@@ -20,16 +20,14 @@ export default async function ResetPasswordPage({
   }
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Radar Público</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Nueva contraseña
-          </p>
-        </div>
-        <ResetPasswordForm token={token} />
+    <>
+      <div className="mb-6 text-center">
+        <h1 className="text-xl font-semibold tracking-tight">Nueva contraseña</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Definí tu nueva contraseña de acceso.
+        </p>
       </div>
-    </main>
+      <ResetPasswordForm token={token} />
+    </>
   )
 }

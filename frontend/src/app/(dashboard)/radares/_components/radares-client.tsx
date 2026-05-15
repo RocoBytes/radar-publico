@@ -227,7 +227,7 @@ export function RadaresClient() {
             No tenés radares configurados todavía.{" "}
             <button
               onClick={abrirCrear}
-              className="text-primary underline underline-offset-2"
+              className="cursor-pointer text-primary underline underline-offset-2"
             >
               Crear el primero
             </button>

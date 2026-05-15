@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { format } from "date-fns"
+import { differenceInCalendarDays, format, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import { MessageSquare } from "lucide-react"
 import { getPipeline } from "@/lib/api"
@@ -95,6 +95,20 @@ function formatFecha(fecha: string | null | undefined): string {
   }
 }
 
+const ESTADOS_ACTIVOS_PIPELINE = new Set(["nueva", "evaluando", "interesada", "postulando", "postulada"])
+
+function urgenciaCierre(fecha: string | null | undefined, estado: PipelineEstado): "urgente" | "pronto" | null {
+  if (!fecha || !ESTADOS_ACTIVOS_PIPELINE.has(estado)) return null
+  try {
+    const dias = differenceInCalendarDays(new Date(fecha), startOfDay(new Date()))
+    if (dias <= 1) return "urgente"
+    if (dias <= 3) return "pronto"
+  } catch {
+    return null
+  }
+  return null
+}
+
 export function PipelineListClient() {
   const router = useRouter()
   const [estado, setEstado] = useState<PipelineEstado | "todos">("todos")
@@ -121,7 +135,7 @@ export function PipelineListClient() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Select
           value={estado}
-          onValueChange={(val) => {
+          onValueChange={(val: string) => {
             setEstado(val as PipelineEstado | "todos")
             setPage(1)
           }}
@@ -157,8 +171,11 @@ export function PipelineListClient() {
         {isLoading ? (
           Array.from({ length: 5 }).map((_, i) => <PipelineCardSkeleton key={i} />)
         ) : !data?.items.length ? (
-          <div className="rounded-md border py-12 text-center text-muted-foreground">
-            No hay items en el pipeline
+          <div className="rounded-lg border py-16 text-center">
+            <p className="text-sm font-medium text-foreground">Tu pipeline está vacío</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Explorá las oportunidades y agregá licitaciones a tu pipeline.
+            </p>
           </div>
         ) : (
           data.items.map((item) => (
@@ -185,11 +202,25 @@ export function PipelineListClient() {
                       >
                         {item.estado.charAt(0).toUpperCase() + item.estado.slice(1)}
                       </span>
-                      {item.licitacion.fecha_cierre && (
-                        <span className="text-xs text-muted-foreground">
-                          Cierre: {formatFecha(item.licitacion.fecha_cierre)}
-                        </span>
-                      )}
+                      {item.licitacion.fecha_cierre && (() => {
+                        const u = urgenciaCierre(item.licitacion.fecha_cierre, item.estado)
+                        return (
+                          <span
+                            className={`text-xs ${
+                              u === "urgente"
+                                ? "font-semibold text-amber-700"
+                                : u === "pronto"
+                                ? "text-amber-600"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            Cierre: {formatFecha(item.licitacion.fecha_cierre)}
+                            {u === "urgente" && (
+                              <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-amber-500 align-middle" />
+                            )}
+                          </span>
+                        )
+                      })()}
                       {item.notas_count > 0 && (
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                           <MessageSquare className="h-3 w-3" />
@@ -209,7 +240,7 @@ export function PipelineListClient() {
       {data && totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Página {page} de {totalPages} ({data.total} items)
+            Página {page} de {totalPages} ({data.total} resultados)
           </p>
           <div className="flex gap-2">
             <Button

@@ -220,7 +220,7 @@ export function PipelineItemClient({ id }: PipelineItemClientProps) {
         <label className="text-sm font-medium">Estado del seguimiento</label>
         <Select
           value={data.estado}
-          onValueChange={(val) =>
+          onValueChange={(val: string) =>
             actualizarEstadoMutation.mutate(val as PipelineEstado)
           }
           disabled={actualizarEstadoMutation.isPending}

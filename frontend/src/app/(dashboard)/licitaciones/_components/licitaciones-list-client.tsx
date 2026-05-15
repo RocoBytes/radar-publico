@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { format } from "date-fns"
+import { differenceInCalendarDays, format, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import { Search } from "lucide-react"
 import { getLicitaciones } from "@/lib/api"
@@ -71,6 +71,20 @@ function formatFecha(fecha: string | null): string {
   } catch {
     return "—"
   }
+}
+
+type UrgenciaCierre = "urgente" | "pronto" | null
+
+function urgenciaCierre(fecha: string | null, estado: LicitacionEstado): UrgenciaCierre {
+  if (!fecha || estado !== "publicada") return null
+  try {
+    const dias = differenceInCalendarDays(new Date(fecha), startOfDay(new Date()))
+    if (dias <= 1) return "urgente"
+    if (dias <= 3) return "pronto"
+  } catch {
+    return null
+  }
+  return null
 }
 
 function SkeletonRows() {
@@ -157,7 +171,7 @@ export function LicitacionesListClient() {
         </div>
         <Select
           value={estado}
-          onValueChange={(val) => {
+          onValueChange={(val: string) => {
             setEstado(val as LicitacionEstado | "todos")
             setPage(1)
           }}
@@ -219,7 +233,25 @@ export function LicitacionesListClient() {
                     {formatMontoCLP(item.monto_estimado)}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {formatFecha(item.fecha_cierre)}
+                    {(() => {
+                      const u = urgenciaCierre(item.fecha_cierre, item.estado)
+                      return (
+                        <span
+                          className={
+                            u === "urgente"
+                              ? "font-semibold text-amber-700"
+                              : u === "pronto"
+                              ? "text-amber-600"
+                              : ""
+                          }
+                        >
+                          {formatFecha(item.fecha_cierre)}
+                          {u === "urgente" && (
+                            <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-amber-500 align-middle" />
+                          )}
+                        </span>
+                      )
+                    })()}
                   </TableCell>
                 </TableRow>
               ))

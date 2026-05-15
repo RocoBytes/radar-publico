@@ -4,17 +4,17 @@ import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { ChevronRight } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getDashboardResumen } from "@/lib/api"
 import type { TopOportunidad } from "@/types/dashboard"
 
-function scoreBadgeClass(score: number | null): string {
-  if (score === null) return "bg-muted text-muted-foreground border-transparent"
-  if (score >= 70) return "bg-green-100 text-green-800 border-transparent"
-  if (score >= 40) return "bg-yellow-100 text-yellow-800 border-transparent"
-  return "bg-muted text-muted-foreground border-transparent"
+function scoreCircleClass(score: number | null): string {
+  if (score === null) return "bg-muted text-muted-foreground"
+  if (score >= 70) return "bg-green-100 text-green-800"
+  if (score >= 40) return "bg-amber-100 text-amber-700"
+  return "bg-slate-100 text-slate-600"
 }
 
 function OportunidadRow({ item }: { item: TopOportunidad }) {
@@ -25,11 +25,13 @@ function OportunidadRow({ item }: { item: TopOportunidad }) {
   return (
     <Link
       href={`/pipeline/${item.id}`}
-      className="flex items-start gap-3 rounded-md p-2 hover:bg-muted/50 transition-colors"
+      className="group flex cursor-pointer items-center gap-3 rounded-md p-2 transition-colors hover:bg-muted/50"
     >
-      <Badge className={scoreBadgeClass(item.score)}>
+      <div
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${scoreCircleClass(item.score)}`}
+      >
         {item.score ?? "—"}
-      </Badge>
+      </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.licitacion.nombre}</p>
         <p className="text-xs text-muted-foreground">
@@ -37,6 +39,7 @@ function OportunidadRow({ item }: { item: TopOportunidad }) {
           {fechaCierre ? ` · Cierra ${fechaCierre}` : ""}
         </p>
       </div>
+      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
     </Link>
   )
 }
@@ -55,7 +58,7 @@ export function TopOportunidades() {
         <CardTitle>Top oportunidades</CardTitle>
         <CardDescription>Por score de relevancia</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-1">
+      <CardContent className="space-y-0.5">
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -63,7 +66,7 @@ export function TopOportunidades() {
             ))}
           </div>
         ) : top.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
+          <p className="py-6 text-center text-sm text-muted-foreground">
             Tu pipeline está vacío. Explorá las oportunidades para agregar licitaciones.
           </p>
         ) : (
