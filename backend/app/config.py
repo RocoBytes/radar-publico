@@ -86,10 +86,17 @@ class Settings(BaseSettings):
     admin_email: str = ""
     admin_password: str = ""
 
-    # === Notificaciones ===
+    # === Notificaciones: email ===
     resend_api_key: str = ""
     resend_from_email: str = "alertas@radarpublico.cl"
-    whatsapp_provider_api_key: str = ""
+
+    # === Notificaciones: WhatsApp (Twilio) ===
+    # Feature flag — activar SOLO cuando el template Meta sea aprobado.
+    # Con False, las notificaciones WhatsApp quedan en estado 'fallida' sin llamada real.
+    whatsapp_enabled: bool = False
+    whatsapp_account_sid: str = ""  # Twilio Account SID
+    whatsapp_auth_token: str = ""  # Twilio Auth Token
+    whatsapp_from_number: str = ""  # Número en formato E.164: +56XXXXXXXXX
 
     # === Storage (Cloudflare R2) ===
     r2_access_key: str = ""
