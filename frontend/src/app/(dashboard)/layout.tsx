@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { getMe } from "@/lib/api"
 import { ApiError } from "@/lib/api"
+import { Sidebar } from "@/components/layout/sidebar"
 
 /**
  * Layout protegido del dashboard.
@@ -55,5 +56,14 @@ export default async function DashboardLayout({
     redirect("/change-password")
   }
 
-  return <>{children}</>
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar user={user} />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <main className="flex-1 overflow-y-auto bg-muted/20 p-6">
+          {children}
+        </main>
+      </div>
+    </div>
+  )
 }
