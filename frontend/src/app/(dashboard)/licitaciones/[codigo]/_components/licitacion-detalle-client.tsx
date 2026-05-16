@@ -106,7 +106,7 @@ export function LicitacionDetalleClient({ codigo }: LicitacionDetalleClientProps
     },
   })
 
-  const urlMercadoPublico = `https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?qs=${encodeURIComponent(codigo)}`
+  const urlMercadoPublico = `https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?idlicitacion=${encodeURIComponent(codigo)}`
 
   if (error) {
     return (
