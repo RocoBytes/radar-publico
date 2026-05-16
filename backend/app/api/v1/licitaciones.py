@@ -206,5 +206,11 @@ async def obtener_licitacion(
 
     response = LicitacionDetalleResponse.model_validate(licitacion)
     if licitacion.organismo is not None:
-        response.organismo_nombre = licitacion.organismo.nombre
+        org = licitacion.organismo
+        response.organismo_nombre = org.nombre
+        response.organismo_rut = org.rut
+        response.organismo_region = org.region
+        response.organismo_comuna = org.comuna
+        response.organismo_direccion = org.direccion
+        response.organismo_ministerio = org.ministerio
     return response

@@ -224,20 +224,77 @@ export function LicitacionDetalleClient({ codigo }: LicitacionDetalleClientProps
           </TabsList>
 
           {/* Tab: Resumen */}
-          <TabsContent value="resumen" className="mt-4">
-            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <DetalleRow label="Descripción" value={data.descripcion} />
-              <DetalleRow label="Tipo" value={data.tipo} />
-              <DetalleRow label="Moneda" value={data.moneda} />
-              <DetalleRow label="Región" value={data.region_nombre} />
-              <DetalleRow label="Unidad compradora" value={data.unidad_nombre} />
-              <DetalleRow label="Fecha publicación" value={formatFecha(data.fecha_publicacion)} />
-              <DetalleRow label="Fecha cierre" value={formatFecha(data.fecha_cierre)} />
-              <DetalleRow
-                label="Fecha est. adjudicación"
-                value="—"
-              />
-            </dl>
+          <TabsContent value="resumen" className="mt-4 space-y-6">
+            {/* 1. Características de la licitación */}
+            <section>
+              <h2 className="text-sm font-semibold text-primary mb-3">
+                1. Características de la licitación
+              </h2>
+              <div className="rounded-md border p-4">
+                <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <DetalleRow label="Descripción" value={data.descripcion} />
+                  <DetalleRow label="Tipo de licitación" value={data.tipo} />
+                  <DetalleRow label="Tipo de convocatoria" value={data.modalidad} />
+                  <DetalleRow label="Moneda" value={data.moneda} />
+                  <DetalleRow
+                    label="Renovable"
+                    value={data.es_renovable ? "Sí" : "No"}
+                  />
+                  <DetalleRow
+                    label="Duración estimada"
+                    value={
+                      data.duracion_estimada_meses
+                        ? `${data.duracion_estimada_meses} meses`
+                        : null
+                    }
+                  />
+                  <DetalleRow
+                    label="Fecha publicación"
+                    value={formatFecha(data.fecha_publicacion)}
+                  />
+                  <DetalleRow
+                    label="Fecha cierre"
+                    value={formatFecha(data.fecha_cierre)}
+                  />
+                </dl>
+              </div>
+            </section>
+
+            {/* 2. Organismo demandante */}
+            <section>
+              <h2 className="text-sm font-semibold text-primary mb-3">
+                2. Organismo demandante
+              </h2>
+              <div className="rounded-md border p-4">
+                <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <DetalleRow label="Razón social" value={data.organismo_nombre} />
+                  <DetalleRow label="Unidad de compra" value={data.unidad_compra} />
+                  <DetalleRow label="R.U.T." value={data.organismo_rut ?? data.rut_unidad} />
+                  <DetalleRow label="Región" value={data.organismo_region} />
+                  <DetalleRow label="Comuna" value={data.organismo_comuna} />
+                  <DetalleRow label="Dirección" value={data.organismo_direccion} />
+                  {data.organismo_ministerio && (
+                    <DetalleRow label="Ministerio" value={data.organismo_ministerio} />
+                  )}
+                </dl>
+              </div>
+            </section>
+
+            {/* 3. Contacto */}
+            {(data.contacto_nombre ?? data.contacto_email ?? data.contacto_telefono) && (
+              <section>
+                <h2 className="text-sm font-semibold text-primary mb-3">
+                  3. Contacto
+                </h2>
+                <div className="rounded-md border p-4">
+                  <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <DetalleRow label="Nombre" value={data.contacto_nombre} />
+                    <DetalleRow label="Email" value={data.contacto_email} />
+                    <DetalleRow label="Teléfono" value={data.contacto_telefono} />
+                  </dl>
+                </div>
+              </section>
+            )}
           </TabsContent>
 
           {/* Tab: Calendario */}

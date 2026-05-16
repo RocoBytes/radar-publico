@@ -112,6 +112,8 @@ async def _upsert_organismo(
             nombre=nombre,
             rut=comprador.RutUnidad,
             region=comprador.RegionUnidad,
+            comuna=comprador.ComunaUnidad,
+            direccion=comprador.DireccionUnidad,
             updated_at=ahora,
         )
         .on_conflict_do_update(
@@ -120,6 +122,8 @@ async def _upsert_organismo(
                 "nombre": nombre,
                 "rut": comprador.RutUnidad,
                 "region": comprador.RegionUnidad,
+                "comuna": comprador.ComunaUnidad,
+                "direccion": comprador.DireccionUnidad,
                 "updated_at": ahora,
             },
         )

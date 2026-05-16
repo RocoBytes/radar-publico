@@ -44,7 +44,26 @@ export type LicitacionFecha = {
 
 export type LicitacionDetalle = LicitacionListItem & {
   descripcion: string | null
-  unidad_nombre: string | null
+  modalidad: string | null
+  es_renovable: boolean
+  duracion_estimada_meses: number | null
+
+  // Unidad compradora
+  unidad_compra: string | null
+  rut_unidad: string | null
+
+  // Organismo demandante
+  organismo_rut: string | null
+  organismo_region: string | null
+  organismo_comuna: string | null
+  organismo_direccion: string | null
+  organismo_ministerio: string | null
+
+  // Contacto
+  contacto_nombre: string | null
+  contacto_email: string | null
+  contacto_telefono: string | null
+
   items: LicitacionItem[]
   documentos: DocumentoBase[]
   fechas: LicitacionFecha[]

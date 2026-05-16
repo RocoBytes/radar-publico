@@ -94,26 +94,44 @@ class LicitacionDetalleResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    # Campos del listado
+    # Identificación
     codigo: str
     nombre: str
     estado: LicitacionEstado
+    descripcion: str | None
+
+    # Características
     tipo: str | None
     modalidad: str | None
     moneda: str
     monto_estimado: float | None
+    es_renovable: bool
+    duracion_estimada_meses: int | None
+
+    # Fechas clave
     fecha_publicacion: datetime | None
     fecha_cierre: datetime | None
     fecha_adjudicacion: datetime | None
-    organismo_nombre: str | None = None
-    created_at: datetime
-    updated_at: datetime
 
-    # Campos adicionales del detalle
-    descripcion: str | None
-    es_renovable: bool
+    # Unidad compradora (datos de la licitación)
+    unidad_compra: str | None
+    rut_unidad: str | None
+
+    # Organismo demandante (join con tabla organismos)
+    organismo_nombre: str | None = None
+    organismo_rut: str | None = None
+    organismo_region: str | None = None
+    organismo_comuna: str | None = None
+    organismo_direccion: str | None = None
+    organismo_ministerio: str | None = None
+
+    # Contacto
     contacto_nombre: str | None
     contacto_email: str | None
+    contacto_telefono: str | None
+
+    created_at: datetime
+    updated_at: datetime
 
     # Relaciones
     items: list[LicitacionItemResponse]
