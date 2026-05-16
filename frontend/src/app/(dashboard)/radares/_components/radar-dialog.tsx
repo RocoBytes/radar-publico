@@ -77,7 +77,7 @@ export function RadarDialog({ open, onOpenChange, radar }: RadarDialogProps) {
       nombre: "",
       descripcion: "",
       filtros_q: "",
-      filtros_estado: "",
+      filtros_estado: "todos",
       notif_canal: "email",
       notif_score_minimo: 0,
     },
@@ -90,7 +90,7 @@ export function RadarDialog({ open, onOpenChange, radar }: RadarDialogProps) {
         nombre: radar.nombre,
         descripcion: radar.descripcion ?? "",
         filtros_q: radar.filtros.q ?? "",
-        filtros_estado: radar.filtros.estado ?? "",
+        filtros_estado: radar.filtros.estado ?? "todos",
         notif_canal: radar.notif_canal,
         notif_score_minimo: radar.notif_score_minimo,
       })
@@ -99,7 +99,7 @@ export function RadarDialog({ open, onOpenChange, radar }: RadarDialogProps) {
         nombre: "",
         descripcion: "",
         filtros_q: "",
-        filtros_estado: "",
+        filtros_estado: "todos",
         notif_canal: "email",
         notif_score_minimo: 0,
       })
@@ -113,7 +113,7 @@ export function RadarDialog({ open, onOpenChange, radar }: RadarDialogProps) {
         ...(values.descripcion ? { descripcion: values.descripcion } : {}),
         filtros: {
           ...(values.filtros_q ? { q: values.filtros_q } : {}),
-          ...(values.filtros_estado ? { estado: values.filtros_estado } : {}),
+          ...(values.filtros_estado && values.filtros_estado !== "todos" ? { estado: values.filtros_estado } : {}),
         },
         notif_canal: values.notif_canal,
         notif_score_minimo: values.notif_score_minimo,
@@ -205,8 +205,8 @@ export function RadarDialog({ open, onOpenChange, radar }: RadarDialogProps) {
                   <FormItem>
                     <FormLabel>Estado</FormLabel>
                     <Select
-                      value={field.value ?? ""}
-                      onValueChange={field.onChange}
+                      value={field.value || "todos"}
+                      onValueChange={(v: string) => field.onChange(v === "todos" ? "" : v)}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -214,7 +214,7 @@ export function RadarDialog({ open, onOpenChange, radar }: RadarDialogProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Todos los estados</SelectItem>
+                        <SelectItem value="todos">Todos los estados</SelectItem>
                         {ESTADOS_LICITACION.map((e) => (
                           <SelectItem key={e.value} value={e.value}>
                             {e.label}
