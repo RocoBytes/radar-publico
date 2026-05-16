@@ -19,7 +19,7 @@ from app.models.empresa import Empresa
 from app.models.enums import UserRole, UserStatus
 from app.models.usuario import Usuario
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -31,14 +31,20 @@ DbDep = Annotated[AsyncSession, Depends(get_db)]
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    request: Request,
     db: DbDep,
+    bearer_token: Annotated[str | None, Depends(oauth2_scheme)] = None,
 ) -> Usuario:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Credenciales inválidas",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    # Prioridad 1: Authorization Bearer (Swagger, clientes API, impersonación)
+    # Prioridad 2: cookie access_token (frontend web — httpOnly, no legible por JS)
+    token = bearer_token or request.cookies.get("access_token")
+    if not token:
+        raise credentials_exception
     try:
         payload = decode_access_token(token)
     except InvalidTokenError:

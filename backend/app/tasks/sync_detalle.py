@@ -139,6 +139,7 @@ async def _run(codigo: str) -> dict[str, int]:
     from sqlalchemy import and_, delete, select
 
     from app.db.session import AsyncSessionLocal
+    from app.models.catalogos import Unspsc
     from app.models.licitacion import (
         Licitacion,
         LicitacionFecha,
@@ -299,13 +300,33 @@ async def _run(codigo: str) -> dict[str, int]:
                         LicitacionItem.licitacion_codigo == codigo
                     )
                 )
+
+                # Precalcular qué códigos UNSPSC existen en la tabla.
+                # El catálogo seed solo tiene niveles 2 y 4 dígitos; los items
+                # reales usan 8 dígitos. Si el código no existe → None para
+                # evitar FK violation (el dato queda en nombre_producto igual).
+                codigos_en_items = {
+                    str(it.CodigoProducto)
+                    for it in detalle.Items.Listado
+                    if it.CodigoProducto
+                }
+                codigos_validos: set[str] = set()
+                if codigos_en_items:
+                    rows_unspsc = await session.execute(
+                        select(Unspsc.codigo).where(
+                            Unspsc.codigo.in_(codigos_en_items)
+                        )
+                    )
+                    codigos_validos = {r[0] for r in rows_unspsc}
+
                 for item_api in detalle.Items.Listado:
                     numero = item_api.Correlativo or 0
-                    unspsc = (
+                    unspsc_raw = (
                         str(item_api.CodigoProducto)
                         if item_api.CodigoProducto
                         else None
                     )
+                    unspsc = unspsc_raw if unspsc_raw in codigos_validos else None
                     session.add(
                         LicitacionItem(
                             licitacion_codigo=codigo,
