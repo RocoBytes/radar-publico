@@ -162,12 +162,12 @@ async def test_crear_radar_nombre_vacio_retorna_422(
 
 
 @pytest.mark.asyncio
-async def test_crear_radar_limita_a_50(
+async def test_crear_radar_limita_a_20(
     client: AsyncClient,
     empresa_con_usuario: tuple[Any, Any],
     db_session: AsyncSession,
 ) -> None:
-    """Empresa con 50 radares → siguiente POST retorna 400."""
+    """Empresa con 20 radares → siguiente POST retorna 400 (US-5.3: máx 20)."""
     user, empresa = empresa_con_usuario
 
     radares = [
@@ -176,7 +176,7 @@ async def test_crear_radar_limita_a_50(
             nombre=f"Radar {i}",
             filtros={},
         )
-        for i in range(50)
+        for i in range(20)
     ]
     db_session.add_all(radares)
     await db_session.commit()

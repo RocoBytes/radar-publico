@@ -53,7 +53,7 @@ class TestJWT:
                 decode_access_token(token)
 
     def test_decode_falla_con_tipo_incorrecto(self) -> None:
-        from jose import jwt
+        import jwt
 
         from app.config import settings
 

@@ -25,7 +25,7 @@ celery[redis]==5.4.0
 flower==2.0.1
 
 # === Auth y seguridad ===
-python-jose[cryptography]==3.3.0
+PyJWT==2.10.1
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 cryptography==43.0.3
@@ -47,6 +47,7 @@ pymupdf==1.24.13
 pypdf==5.1.0
 unstructured[pdf]==0.16.5
 python-magic==0.4.27
+python-docx==1.1.2
 
 # === Storage ===
 boto3==1.35.54
@@ -67,7 +68,6 @@ structlog==24.4.0
 python-dateutil==2.9.0.post0
 pytz==2024.2
 email-validator==2.2.0
-slugify==0.0.1
 python-slugify==8.0.4
 
 # === Dev tools (solo para development target) ===

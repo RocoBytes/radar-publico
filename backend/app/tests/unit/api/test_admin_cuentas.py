@@ -61,10 +61,10 @@ async def test_impersonar_retorna_token(
     payload = decode_access_token(data["access_token"])
     assert payload.sub == str(proveedor.id)
 
-    from jose import jwt as _jwt
+    import jwt
     from app.config import settings
 
-    raw = _jwt.decode(data["access_token"], settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    raw = jwt.decode(data["access_token"], settings.jwt_secret, algorithms=[settings.jwt_algorithm])
     assert raw.get("impersonated_by_admin_id") == str(admin.id)
 
 
