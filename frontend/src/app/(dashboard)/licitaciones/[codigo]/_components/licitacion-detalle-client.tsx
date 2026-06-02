@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { ArrowLeft, Bot, BrainCircuit, ExternalLink, Plus } from "lucide-react"
+import { ArrowLeft, Bot, BrainCircuit, ExternalLink, Plus, Sparkles, Wand2 } from "lucide-react"
 import { toast } from "sonner"
 import { getLicitacion, createPipelineItem } from "@/lib/api"
+import { AnalisisPanel } from "./analisis-panel"
 import { ChatPanel } from "./chat-panel"
 import { InteligenciaPanel } from "./inteligencia-panel"
+import { PropuestaPanel } from "./propuesta-panel"
 import type { LicitacionEstado } from "@/types/licitacion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -179,6 +181,7 @@ export function LicitacionDetalleClient({ codigo }: LicitacionDetalleClientProps
         </div>
       ) : null}
 
+
       {/* Tabs de contenido */}
       {isLoading ? (
         <div className="space-y-3">
@@ -212,6 +215,14 @@ export function LicitacionDetalleClient({ codigo }: LicitacionDetalleClientProps
                   {data.items.length}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="analisis">
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+              Análisis IA
+            </TabsTrigger>
+            <TabsTrigger value="propuesta">
+              <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+              Propuesta IA
             </TabsTrigger>
             <TabsTrigger value="inteligencia">
               <BrainCircuit className="mr-1.5 h-3.5 w-3.5" />
@@ -375,6 +386,16 @@ export function LicitacionDetalleClient({ codigo }: LicitacionDetalleClientProps
                 </Table>
               </div>
             )}
+          </TabsContent>
+
+          {/* Tab: Análisis IA */}
+          <TabsContent value="analisis" className="mt-4">
+            <AnalisisPanel codigo={codigo} />
+          </TabsContent>
+
+          {/* Tab: Propuesta IA */}
+          <TabsContent value="propuesta" className="mt-4">
+            <PropuestaPanel codigo={codigo} />
           </TabsContent>
 
           {/* Tab: Inteligencia */}

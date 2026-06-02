@@ -67,6 +67,10 @@ export type LicitacionDetalle = LicitacionListItem & {
   items: LicitacionItem[]
   documentos: DocumentoBase[]
   fechas: LicitacionFecha[]
+
+  // Cuando es true, el detalle aún se está sincronizando desde ChileCompra.
+  // El cliente debe reintentar en ~10 segundos.
+  detalle_pendiente?: boolean
 }
 
 export type LicitacionListResponse = {
@@ -75,6 +79,75 @@ export type LicitacionListResponse = {
   page: number
   page_size: number
   total_pages: number
+}
+
+// ── Módulo 1: Auto-análisis de bases técnicas ─────────────────────────────────
+
+export type AnalisisStatus = "pendiente" | "procesando" | "listo" | "error"
+
+export type RequisitoTecnico = {
+  descripcion: string
+  tipo: "obligatorio" | "deseable"
+  detalle: string | null
+}
+
+export type CriterioExtraido = {
+  nombre: string
+  peso_pct: number
+  descripcion: string | null
+}
+
+export type DocumentoObligatorio = {
+  nombre: string
+  descripcion: string | null
+  obligatorio: boolean
+}
+
+export type PlazoClave = {
+  tipo: string
+  fecha_texto: string
+  descripcion: string | null
+}
+
+export type AnalisisBases = {
+  id: string
+  licitacion_codigo: string
+  version: number
+  status: AnalisisStatus
+  requisitos_tecnicos: RequisitoTecnico[] | null
+  criterios_extraidos: CriterioExtraido[] | null
+  documentos_obligatorios: DocumentoObligatorio[] | null
+  plazos_clave: PlazoClave[] | null
+  restricciones: string[] | null
+  resumen_ejecutivo: string | null
+  modelo_usado: string | null
+  error_mensaje: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ── Módulo 2: Borrador de propuesta técnica ───────────────────────────────────
+
+export type SeccionPropuesta = {
+  titulo: string
+  contenido: string
+  orden: number | null
+}
+
+export type BorradorPropuesta = {
+  id: string
+  licitacion_codigo: string
+  empresa_id: string
+  version: number
+  status: AnalisisStatus
+  titulo: string | null
+  secciones: SeccionPropuesta[] | null
+  documentos_pendientes: string[] | null
+  notas_revision: string[] | null
+  modelo_usado: string | null
+  error_mensaje: string | null
+  created_at: string
+  updated_at: string
 }
 
 export type LicitacionFiltros = {
