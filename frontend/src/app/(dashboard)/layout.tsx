@@ -1,13 +1,16 @@
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { getMe } from "@/lib/api"
-import { ApiError } from "@/lib/api"
+import { getMe, ApiError } from "@/lib/api"
 import { Sidebar } from "@/components/layout/sidebar"
 
 /**
  * Layout protegido del dashboard.
- * - Sin sesión válida → redirect a /login
+ * - Sin sesión válida → redirect a /login (middleware lo intercepta primero)
  * - Con must_change_password=true → redirect a /change-password
+ * - Sin onboarding completado → redirect a /onboarding
+ *
+ * onboarding_completado viene incluido en /auth/me (EmpresaBasica),
+ * eliminando la segunda llamada a /empresa/me que existía antes.
  */
 export default async function DashboardLayout({
   children,
@@ -26,7 +29,6 @@ export default async function DashboardLayout({
     user = await getMe(accessToken)
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
-      // Token expirado: intentar refresh server-side
       const internalApi =
         process.env["INTERNAL_API_URL"] ?? "http://localhost:8000"
       const refreshToken = cookieStore.get("refresh_token")?.value
@@ -45,8 +47,6 @@ export default async function DashboardLayout({
         redirect("/login")
       }
 
-      // Tras refresh exitoso en SSR, redirigir para que el Route Handler rote las cookies
-      // La solución limpia: redirigir a un endpoint que haga el refresh y devuelva a la ruta actual
       redirect("/login")
     }
     redirect("/login")
@@ -54,6 +54,10 @@ export default async function DashboardLayout({
 
   if (user.must_change_password) {
     redirect("/change-password")
+  }
+
+  if (!user.empresa?.onboarding_completado) {
+    redirect("/onboarding")
   }
 
   return (
