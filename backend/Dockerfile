@@ -36,13 +36,16 @@ WORKDIR /app
 # ============================================================
 FROM base AS builder
 
-COPY pyproject.toml poetry.lock* requirements.txt* ./
+COPY pyproject.toml poetry.lock* requirements.txt* requirements-prod.txt* ./
 
-# Soporte para ambos: poetry o requirements.txt
+# Preferencia: poetry (con dev deps excluidos) > requirements-prod.txt > requirements.txt
 RUN if [ -f poetry.lock ]; then \
         pip install poetry==1.8.3 && \
         poetry config virtualenvs.in-project true && \
         poetry install --no-root --without dev; \
+    elif [ -f requirements-prod.txt ]; then \
+        python -m venv .venv && \
+        .venv/bin/pip install -r requirements-prod.txt; \
     elif [ -f requirements.txt ]; then \
         python -m venv .venv && \
         .venv/bin/pip install -r requirements.txt; \
@@ -92,12 +95,19 @@ WORKDIR /app
 # Instalar deps con pip del sistema de la imagen Playwright.
 # No copiamos el venv del builder (arm64) porque esta imagen puede correr
 # bajo emulación amd64 en Apple Silicon y los binarios serían incompatibles.
-COPY requirements.txt* ./
-RUN if [ -f requirements.txt ]; then \
+COPY requirements.txt* requirements-prod.txt* ./
+RUN if [ -f requirements-prod.txt ]; then \
+        pip install --no-cache-dir -r requirements-prod.txt; \
+    elif [ -f requirements.txt ]; then \
         pip install --no-cache-dir -r requirements.txt; \
     fi
 
 COPY . .
+
+# Usuario no-root: Chromium no necesita root en un contenedor Docker
+RUN groupadd -r radar && useradd -r -g radar --home /app radar && \
+    chown -R radar:radar /app
+USER radar
 
 CMD ["python", "-m", "celery", "-A", "app.celery_app", "worker", "-Q", "scraping", "--concurrency=2", "--loglevel=info"]
 

@@ -4,7 +4,7 @@ Todas las variables de entorno se leen desde aquí.
 Nunca importar os.environ directamente en el código de la aplicación.
 """
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -58,8 +58,31 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: str) -> str:
-        """Valida que CORS_ORIGINS no sea wildcard en producción."""
         return v
+
+    @model_validator(mode="after")
+    def validate_security_config(self) -> "Settings":
+        """Rechaza secretos débiles y CORS wildcard en producción."""
+        _KNOWN_WEAK = {
+            "change_me_in_production",
+            "change_me_32_bytes_long_min____",
+        }
+        if self.environment == "production":
+            if self.jwt_secret in _KNOWN_WEAK or len(self.jwt_secret.encode()) < 32:
+                raise ValueError(
+                    "JWT_SECRET inseguro para producción. "
+                    "Generá uno con: openssl rand -hex 32"
+                )
+            if self.encryption_key in _KNOWN_WEAK:
+                raise ValueError(
+                    "ENCRYPTION_KEY insegura para producción. "
+                    "Generá una con: openssl rand -base64 24"
+                )
+            if "*" in self.cors_origins:
+                raise ValueError(
+                    "CORS_ORIGINS no puede ser wildcard en producción"
+                )
+        return self
 
     @property
     def cors_origins_list(self) -> list[str]:

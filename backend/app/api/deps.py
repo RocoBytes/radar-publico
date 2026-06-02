@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.core.security import InvalidTokenError, decode_access_token
 from app.db import session as _db_session
 from app.models.empresa import Empresa
@@ -116,8 +117,9 @@ ActiveUser = Annotated[Usuario, Depends(require_password_change_completed)]
 
 
 def get_request_ip(request: Request) -> str:
-    """Extrae la IP del cliente. Respeta X-Forwarded-For solo en producción."""
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """Extrae la IP del cliente. Solo respeta X-Forwarded-For en producción (detrás de Caddy)."""
+    if settings.is_production:
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"

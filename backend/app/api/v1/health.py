@@ -109,14 +109,17 @@ async def health() -> JSONResponse:
 
     from app.config import settings as _settings
 
+    # En producción nunca exponemos detalles del error (podrían filtrar DSN, contraseñas)
+    expose_errors = not _settings.is_production
+
     pg_info: dict[str, object] = {"status": pg_status}
-    if pg_error:
+    if pg_error and expose_errors:
         pg_info["error"] = pg_error
     redis_info: dict[str, object] = {"status": redis_status}
-    if redis_error:
+    if redis_error and expose_errors:
         redis_info["error"] = redis_error
     celery_info: dict[str, object] = {"status": celery_status}
-    if celery_error:
+    if celery_error and expose_errors:
         celery_info["error"] = celery_error
 
     payload: dict[str, object] = {

@@ -36,9 +36,9 @@ if [ "$UPLOAD" = "--upload" ]; then
     exit 1
   fi
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Subiendo a R2..."
-  # aws s3 cp "${BACKUP_DIR}/${FILENAME}" "s3://${R2_BUCKET}/backups/${FILENAME}" \
-  #   --endpoint-url "${R2_ENDPOINT}"
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Upload completado (implementar en Sprint 7)"
+  aws s3 cp "${BACKUP_DIR}/${FILENAME}" "s3://${R2_BUCKET}/backups/${FILENAME}" \
+    --endpoint-url "${R2_ENDPOINT:-https://$(echo "${R2_BUCKET}" | cut -d. -f1).r2.cloudflarestorage.com}"
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Upload completado: s3://${R2_BUCKET}/backups/${FILENAME}"
 fi
 
 # Limpiar backups locales con más de 7 días
