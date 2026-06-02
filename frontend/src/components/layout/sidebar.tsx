@@ -9,6 +9,7 @@ import {
   Kanban,
   Radar,
   BarChart2,
+  BookOpen,
   Settings,
   LogOut,
   Bell,
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { href: "/pipeline", icon: Kanban, label: "Pipeline" },
   { href: "/radares", icon: Radar, label: "Radares" },
   { href: "/analisis", icon: BarChart2, label: "Análisis" },
+  { href: "/directorios", icon: BookOpen, label: "Directorios" },
   { href: "/configuracion", icon: Settings, label: "Configuración" },
 ] as const
 
