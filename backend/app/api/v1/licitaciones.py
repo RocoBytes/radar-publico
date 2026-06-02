@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, time
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import Select, exists, func, select
 from sqlalchemy.orm import joinedload, selectinload
@@ -24,6 +25,7 @@ from app.schemas.licitaciones import (
 )
 
 router = APIRouter(prefix="/licitaciones", tags=["licitaciones"])
+logger = structlog.get_logger()
 
 
 def _date_to_utc_start(d: date) -> datetime:
@@ -204,6 +206,25 @@ async def obtener_licitacion(
             detail=f"Licitación '{codigo}' no encontrada",
         )
 
+    # Sync-on-access síncrono: si el detalle no existe, llamar a la API ahora
+    # mismo en el mismo request. El usuario espera una vez (3-10 s típico) y
+    # las visitas siguientes van directo desde BD.
+    if licitacion.detalle_sincronizado_at is None:
+        try:
+            from app.tasks.sync_detalle import _run as _sync_detalle
+            await _sync_detalle(codigo, skip_engine_dispose=True)
+            # Expirar la sesión para que la re-query traiga datos frescos
+            db.expire_all()
+            fresh = (await db.execute(stmt)).unique().scalar_one_or_none()
+            if fresh is not None:
+                licitacion = fresh
+        except Exception as exc:
+            logger.warning(
+                "sync_on_access_failed",
+                codigo=codigo,
+                error=str(exc),
+            )
+
     response = LicitacionDetalleResponse.model_validate(licitacion)
     if licitacion.organismo is not None:
         org = licitacion.organismo
@@ -213,4 +234,5 @@ async def obtener_licitacion(
         response.organismo_comuna = org.comuna
         response.organismo_direccion = org.direccion
         response.organismo_ministerio = org.ministerio
+
     return response

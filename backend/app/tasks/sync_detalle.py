@@ -32,6 +32,7 @@ import hashlib
 import json
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -78,6 +79,72 @@ def _hash_detalle(payload: dict[str, Any]) -> str:
     """SHA-256 del payload completo del detalle para detectar cambios."""
     content = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha256(content.encode()).hexdigest()
+
+
+async def _sync_adjudicaciones(
+    session: AsyncSession,
+    licitacion_codigo: str,
+    items: list[Any],
+    fechas: Any | None,
+) -> None:
+    """Pobla adjudicaciones y proveedores desde los items del detalle.
+
+    Acumula el monto total por proveedor (Cantidad × MontoUnitario por ítem)
+    antes de insertar. Idempotente: borra las previas de esta licitación primero.
+    """
+    from decimal import Decimal
+
+    from sqlalchemy import delete as sa_delete
+
+    from app.models.adjudicacion import Adjudicacion
+    from app.models.proveedor import Proveedor
+
+    # Acumular total por proveedor (un proveedor puede ganar múltiples ítems)
+    por_proveedor: dict[str, dict[str, Any]] = {}
+    for item in items:
+        adj = item.Adjudicacion
+        if adj is None or not adj.RutProveedor:
+            continue
+        rut = adj.RutProveedor
+
+        monto_item: Decimal | None = None
+        if adj.Cantidad is not None and adj.MontoUnitario is not None:
+            monto_item = Decimal(str(adj.Cantidad)) * Decimal(str(adj.MontoUnitario))
+
+        if rut not in por_proveedor:
+            por_proveedor[rut] = {
+                "nombre": adj.NombreProveedor or "",
+                "monto_total": Decimal(0) if monto_item is not None else None,
+            }
+        if monto_item is not None and por_proveedor[rut]["monto_total"] is not None:
+            por_proveedor[rut]["monto_total"] += monto_item
+
+    if not por_proveedor:
+        return
+
+    fecha_adj = fechas.FechaAdjudicacion if fechas else None
+
+    # Idempotente: borrar adjudicaciones previas para esta licitación
+    await session.execute(
+        sa_delete(Adjudicacion).where(Adjudicacion.licitacion_codigo == licitacion_codigo)
+    )
+
+    for rut, data in por_proveedor.items():
+        # Upsert proveedor (catálogo externo — no cascadea)
+        proveedor: Proveedor | None = await session.get(Proveedor, rut)
+        if proveedor is None:
+            session.add(Proveedor(rut=rut, razon_social=data["nombre"]))
+        elif data["nombre"]:
+            proveedor.razon_social = data["nombre"]
+
+        session.add(
+            Adjudicacion(
+                licitacion_codigo=licitacion_codigo,
+                rut_proveedor=rut,
+                monto_adjudicado=data["monto_total"],
+                fecha_adjudicacion=fecha_adj,
+            )
+        )
 
 
 async def _upsert_organismo(
@@ -131,18 +198,31 @@ async def _upsert_organismo(
     await session.execute(stmt)
 
 
-async def _run(codigo: str) -> dict[str, int]:
+async def _run(
+    codigo: str,
+    *,
+    skip_engine_dispose: bool = False,
+) -> dict[str, int]:
     """Lógica async de sincronización de detalle.
 
     Obtiene el ticket activo de la primera empresa que lo tenga (en v1
     hay 1:1 empresa-ticket). Verifica cache, llama a la API y persiste
     el detalle completo en una sola transacción.
+
+    skip_engine_dispose: pasar True cuando se llama desde FastAPI (el event
+    loop ya existe y el pool está activo). Solo Celery necesita dispose().
     """
     import uuid
 
     from sqlalchemy import and_, delete, select
 
-    from app.db.session import AsyncSessionLocal
+    from app.db.session import AsyncSessionLocal, engine
+
+    # Disponer conexiones del pool que quedaron adjuntas al event loop anterior.
+    # Cada task Celery corre en su propio asyncio.run() → nuevo event loop.
+    # Sin dispose(), asyncpg falla con "Future attached to a different loop".
+    if not skip_engine_dispose:
+        await engine.dispose()
     from app.models.catalogos import Unspsc
     from app.models.licitacion import (
         Licitacion,
@@ -272,6 +352,14 @@ async def _run(codigo: str) -> dict[str, int]:
                 lic.moneda = detalle.Moneda
             if detalle.EsRenovable is not None:
                 lic.es_renovable = bool(detalle.EsRenovable)
+            # TipoConvocatoria: "1"=Pública, "2"=Privada
+            if detalle.TipoConvocatoria:
+                _CONVOCATORIA = {"1": "Pública", "2": "Privada"}
+                lic.modalidad = _CONVOCATORIA.get(
+                    str(detalle.TipoConvocatoria), str(detalle.TipoConvocatoria)
+                )
+            if detalle.FonoResponsableContrato:
+                lic.contacto_telefono = detalle.FonoResponsableContrato
 
             # Duración del contrato → duracion_estimada_meses y fecha_estimada_termino_contrato
             # UnidadTiempoDuracionContrato: 1=días, 2=meses, 3=años (convención ChileCompra)
@@ -374,6 +462,17 @@ async def _run(codigo: str) -> dict[str, int]:
                             )
                         )
 
+            # Adjudicaciones — poblar cuando la licitación está adjudicada (código 8)
+            # Ver CLAUDE.md §9 para el mapeo de códigos de estado.
+            if (
+                detalle.CodigoEstado == 8
+                and detalle.Items
+                and detalle.Items.Listado
+            ):
+                await _sync_adjudicaciones(
+                    session, codigo, detalle.Items.Listado, detalle.Fechas
+                )
+
             await session.commit()
 
         duracion_ms = int((datetime.now(UTC) - inicio).total_seconds() * 1000)
@@ -473,3 +572,48 @@ def sync_detalle_licitacion(self: Any, codigo: str) -> dict[str, int]:
     """
     logger.info("sync_detalle_start", codigo=codigo)
     return asyncio.run(_run(codigo))
+
+
+async def _encolar_pendientes(limit: int) -> dict[str, int]:
+    """Busca licitaciones sin detalle y encola hasta `limit` tasks individuales."""
+    from app.db.session import AsyncSessionLocal
+    from app.models.licitacion import Licitacion
+
+    async with AsyncSessionLocal() as session:
+        stmt = (
+            select(Licitacion.codigo)
+            .where(Licitacion.detalle_sincronizado_at.is_(None))
+            .order_by(Licitacion.fecha_publicacion.desc().nullslast())
+            .limit(limit)
+        )
+        rows = (await session.execute(stmt)).all()
+
+    codigos = [r[0] for r in rows]
+    for codigo in codigos:
+        sync_detalle_licitacion.apply_async(args=[codigo], queue="celery")
+
+    logger.info(
+        "sync_detalles_pendientes_encolados",
+        total=len(codigos),
+        limit=limit,
+    )
+    return {"encoladas": len(codigos)}
+
+
+@celery_app.task(  # type: ignore[misc]
+    name="tasks.sync_detalle.sync_detalles_pendientes",
+    bind=True,
+    acks_late=True,
+    max_retries=0,
+)
+def sync_detalles_pendientes(self: Any, limit: int = 500) -> dict[str, int]:
+    """Encola el detalle de licitaciones aún no sincronizadas.
+
+    Diseñada para correr en ventana nocturna (22:00–07:00 CLT).
+    Encola hasta `limit` tareas por corrida — con el rate limit interno
+    de 1 req/s en el worker, 500 tasks ≈ 8 minutos de proceso.
+    Con 9 horas de ventana nocturna y corridas cada hora se pueden
+    procesar hasta ~4.500 licitaciones sin tocar la cuota diurna.
+    """
+    logger.info("sync_detalles_pendientes_start", limit=limit)
+    return asyncio.run(_encolar_pendientes(limit))

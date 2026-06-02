@@ -63,6 +63,13 @@ async def _run(codigo: str) -> dict[str, int]:
 
     stats["marcada"] += 1
     logger.info("marcar_procesada_ok", codigo=codigo)
+
+    # Encolar análisis LLM de bases ahora que todos los chunks están disponibles
+    celery_app.send_task(
+        "tasks.analizar_bases.analizar_bases_licitacion",
+        args=[codigo],
+    )
+
     return stats
 
 
