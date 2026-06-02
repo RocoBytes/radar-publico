@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbDep  # noqa: TCH001
 from app.models.adjudicacion import Adjudicacion
-from app.models.licitacion import Licitacion
+from app.models.licitacion import Licitacion, LicitacionItem
 from app.models.organismo import Organismo
 from app.models.proveedor import Proveedor
 from app.schemas.inteligencia import InteligenciaResponse, TopProveedor
@@ -54,6 +54,10 @@ async def obtener_inteligencia(
             total_licitaciones_organismo=0,
             monto_promedio_organismo=None,
             top_proveedores=[],
+            proveedores_unicos_organismo=0,
+            precio_min_organismo=None,
+            precio_max_organismo=None,
+            top_competidores_rubro=[],
         )
 
     fecha_limite = datetime.now(UTC) - timedelta(days=_VENTANA_DIAS)
@@ -116,9 +120,79 @@ async def obtener_inteligencia(
         for row in top_rows
     ]
 
+    # 5. Precios reales adjudicados + diversidad de proveedores en el organismo
+    precios_stmt = (
+        select(
+            func.min(Adjudicacion.monto_adjudicado).label("precio_min"),
+            func.max(Adjudicacion.monto_adjudicado).label("precio_max"),
+            func.count(Adjudicacion.rut_proveedor.distinct()).label("proveedores_unicos"),
+        )
+        .join(Licitacion, Adjudicacion.licitacion_codigo == Licitacion.codigo)
+        .where(
+            Licitacion.codigo_organismo == licitacion.codigo_organismo,
+            Adjudicacion.fecha_adjudicacion >= fecha_limite,
+            Adjudicacion.monto_adjudicado.is_not(None),
+        )
+    )
+    precios_row = (await db.execute(precios_stmt)).one()
+    precio_min: float | None = (
+        float(precios_row.precio_min) if precios_row.precio_min is not None else None
+    )
+    precio_max: float | None = (
+        float(precios_row.precio_max) if precios_row.precio_max is not None else None
+    )
+    proveedores_unicos: int = int(precios_row.proveedores_unicos or 0)
+
+    # 6. Top competidores en el mismo rubro UNSPSC (últimos 2 años)
+    unspsc_de_esta_lic = (
+        select(LicitacionItem.unspsc_codigo)
+        .where(
+            LicitacionItem.licitacion_codigo == codigo,
+            LicitacionItem.unspsc_codigo.is_not(None),
+        )
+    )
+    lics_mismo_rubro = (
+        select(LicitacionItem.licitacion_codigo)
+        .where(
+            LicitacionItem.unspsc_codigo.in_(unspsc_de_esta_lic),
+            LicitacionItem.licitacion_codigo != codigo,
+        )
+        .distinct()
+    )
+    top_rubro_stmt = (
+        select(
+            Proveedor.rut,
+            Proveedor.razon_social,
+            func.count(Adjudicacion.licitacion_codigo.distinct()).label("licitaciones_ganadas"),
+            func.sum(Adjudicacion.monto_adjudicado).label("monto_total"),
+        )
+        .join(Adjudicacion, Adjudicacion.rut_proveedor == Proveedor.rut)
+        .where(
+            Adjudicacion.licitacion_codigo.in_(lics_mismo_rubro),
+            Adjudicacion.fecha_adjudicacion >= fecha_limite,
+        )
+        .group_by(Proveedor.rut, Proveedor.razon_social)
+        .order_by(func.count(Adjudicacion.licitacion_codigo.distinct()).desc())
+        .limit(5)
+    )
+    top_rubro_rows = (await db.execute(top_rubro_stmt)).all()
+    top_competidores_rubro: list[TopProveedor] = [
+        TopProveedor(
+            rut=row.rut,
+            razon_social=row.razon_social,
+            licitaciones_ganadas=int(row.licitaciones_ganadas),
+            monto_total=float(row.monto_total) if row.monto_total is not None else None,
+        )
+        for row in top_rubro_rows
+    ]
+
     return InteligenciaResponse(
         organismo_nombre=organismo_nombre,
         total_licitaciones_organismo=total_licitaciones,
         monto_promedio_organismo=monto_promedio,
         top_proveedores=top_proveedores,
+        proveedores_unicos_organismo=proveedores_unicos,
+        precio_min_organismo=precio_min,
+        precio_max_organismo=precio_max,
+        top_competidores_rubro=top_competidores_rubro,
     )
