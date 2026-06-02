@@ -11,7 +11,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, status
 import structlog
 
 from app.api.deps import CurrentUser, DbDep, get_request_ip
-from app.core import rate_limit
+from app.core import cache, rate_limit
 from app.schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
@@ -59,7 +59,12 @@ async def login(
             ip=ip,
             user_agent=request.headers.get("User-Agent"),
         )
-    except (InvalidCredentialsError, AccountSuspendedError):
+    except AccountSuspendedError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Cuenta no disponible. Contactá a soporte",
+        ) from None
+    except InvalidCredentialsError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales inválidas",
@@ -167,4 +172,10 @@ async def reset_password(
 
 @router.get("/me", response_model=UserMe)
 async def me(current_user: CurrentUser) -> UserMe:
-    return UserMe.model_validate(current_user)
+    cache_key = f"auth:me:{current_user.id}"
+    cached = await cache.get(cache_key)
+    if cached:
+        return UserMe.model_validate_json(cached)
+    result = UserMe.model_validate(current_user)
+    await cache.set(cache_key, result.model_dump_json(), ex=30)
+    return result

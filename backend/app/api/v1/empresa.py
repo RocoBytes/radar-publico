@@ -1,17 +1,23 @@
 """Endpoints REST para el perfil de empresa del usuario autenticado.
 
-GET  /api/v1/empresa/me  — retorna la empresa del proveedor
-PATCH /api/v1/empresa/me — actualiza datos editables de la empresa
+GET  /api/v1/empresa/me              — retorna la empresa del proveedor
+PATCH /api/v1/empresa/me             — actualiza datos editables de la empresa
+POST /api/v1/empresa/ticket-request  — solicita activación del ticket ChileCompra
 """
 
 from datetime import UTC, datetime
 
+import structlog
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbDep
+from app.core import cache
 from app.models.empresa import Empresa
 from app.schemas.empresa import EmpresaResponse, EmpresaUpdateRequest
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/empresa", tags=["empresa"])
 
@@ -71,4 +77,47 @@ async def actualizar_empresa_me(
     await db.commit()
     await db.refresh(empresa)
 
+    await cache.delete(f"auth:me:{current_user.id}")
+
     return EmpresaResponse.model_validate(empresa)
+
+
+class TicketRequestBody(BaseModel):
+    """Cuerpo del request para solicitar activación de ticket ChileCompra."""
+
+    ticket_texto: str
+
+
+class TicketRequestResponse(BaseModel):
+    """Respuesta de la solicitud de ticket."""
+
+    mensaje: str
+
+
+@router.post("/ticket-request", response_model=TicketRequestResponse)
+async def solicitar_ticket(
+    data: TicketRequestBody,
+    db: DbDep,
+    current_user: CurrentUser,
+) -> TicketRequestResponse:
+    """Recibe un ticket ChileCompra del usuario y notifica al equipo de soporte.
+
+    NO persiste el ticket en la BD — eso lo hace el admin manualmente.
+    Solo loguea los últimos 4 caracteres del ticket para trazabilidad,
+    respetando la regla de oro #12 (sin PII en logs).
+    """
+    empresa = await _get_empresa_o_404(db, current_user)
+
+    # Solo loguear los últimos 4 caracteres — regla #12: sin datos sensibles en logs
+    ticket_ultimos_4 = data.ticket_texto[-4:] if len(data.ticket_texto) >= 4 else "????"
+
+    logger.warning(
+        "ticket_request_recibido",
+        empresa_id=str(empresa.id),
+        usuario_id=str(current_user.id),
+        ticket_ultimos_4=ticket_ultimos_4,
+    )
+
+    return TicketRequestResponse(
+        mensaje="Solicitud enviada al equipo de soporte"
+    )

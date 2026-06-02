@@ -87,6 +87,7 @@ class EmpresaBasica(BaseModel):
     id: uuid.UUID
     rut: str
     razon_social: str
+    onboarding_completado: bool
 
     model_config = {"from_attributes": True}
 
