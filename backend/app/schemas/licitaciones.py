@@ -15,7 +15,7 @@ import uuid  # noqa: TCH003
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import FechaTipo, LicitacionEstado  # noqa: TCH001
+from app.models.enums import AnalisisStatus, FechaTipo, LicitacionEstado  # noqa: TCH001
 
 
 class LicitacionListItem(BaseModel):
@@ -137,3 +137,99 @@ class LicitacionDetalleResponse(BaseModel):
     items: list[LicitacionItemResponse]
     fechas: list[LicitacionFechaResponse]
     criterios: list[CriterioEvaluacionResponse]
+
+    # Indica que el detalle completo aún no fue sincronizado y está en proceso.
+    # El cliente debe reintentar en ~10 segundos cuando este campo es True.
+    detalle_pendiente: bool = False
+
+
+# ── Módulo 1: Auto-análisis de bases técnicas ─────────────────────────────────
+
+
+class RequisitoTecnico(BaseModel):
+    """Requisito técnico extraído de las bases."""
+
+    descripcion: str
+    tipo: str  # "obligatorio" | "deseable"
+    detalle: str | None = None
+
+
+class CriterioExtraido(BaseModel):
+    """Criterio de evaluación extraído de las bases con su peso."""
+
+    nombre: str
+    peso_pct: float
+    descripcion: str | None = None
+
+
+class DocumentoObligatorio(BaseModel):
+    """Documento requerido para la presentación de la oferta."""
+
+    nombre: str
+    descripcion: str | None = None
+    obligatorio: bool = True
+
+
+class PlazoClave(BaseModel):
+    """Hito o plazo crítico del proceso licitatorio."""
+
+    tipo: str
+    fecha_texto: str
+    descripcion: str | None = None
+
+
+class AnalisisBasesResponse(BaseModel):
+    """Resultado del análisis LLM de las bases técnicas de una licitación."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    licitacion_codigo: str
+    version: int
+    status: AnalisisStatus
+    requisitos_tecnicos: list[RequisitoTecnico] | None = None
+    criterios_extraidos: list[CriterioExtraido] | None = None
+    documentos_obligatorios: list[DocumentoObligatorio] | None = None
+    plazos_clave: list[PlazoClave] | None = None
+    restricciones: list[str] | None = None
+    resumen_ejecutivo: str | None = None
+    modelo_usado: str | None = None
+    prompt_version: int | None = None
+    tokens_input: int | None = None
+    tokens_output: int | None = None
+    error_mensaje: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+# ── Módulo 2: Borrador de propuesta técnica ───────────────────────────────────
+
+
+class SeccionPropuesta(BaseModel):
+    """Sección estructurada del borrador de propuesta técnica."""
+
+    titulo: str
+    contenido: str
+    orden: int | None = None
+
+
+class BorradorPropuestaResponse(BaseModel):
+    """Resultado del borrador de propuesta técnica generado con LLM."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    licitacion_codigo: str
+    empresa_id: uuid.UUID
+    version: int
+    status: AnalisisStatus
+    titulo: str | None = None
+    secciones: list[SeccionPropuesta] | None = None
+    documentos_pendientes: list[str] | None = None
+    notas_revision: list[str] | None = None
+    modelo_usado: str | None = None
+    tokens_input: int | None = None
+    tokens_output: int | None = None
+    error_mensaje: str | None = None
+    created_at: datetime
+    updated_at: datetime

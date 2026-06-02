@@ -5,6 +5,7 @@ Las tareas se registran en app/tasks/.
 """
 
 from celery import Celery
+from celery.schedules import crontab
 
 from app.config import settings
 
@@ -20,6 +21,8 @@ celery_app = Celery(
         "app.tasks.embed_chunks",  # Sprint 2: embeddings de chunks con Voyage
         "app.tasks.embed_licitacion",  # Sprint 2: embedding de licitación (título+desc)
         "app.tasks.marcar_procesada",  # Sprint 2: marcar licitación procesada
+        "app.tasks.analizar_bases",  # Plan 0 IA: análisis LLM de bases técnicas
+        "app.tasks.generar_borrador",  # Módulo 2 IA: borrador de propuesta técnica
         "app.tasks.recalcula_scores",  # Sprint 4: scoring de relevancia
         "app.tasks.ejecuta_radares",  # Sprint 4: ejecucion de radares
         "app.tasks.procesar_notificaciones",  # Sprint 5: despacho de notificaciones
@@ -50,6 +53,8 @@ celery_app.conf.update(
         "tasks.embed_chunks.*": {"queue": "celery"},
         "tasks.embed_licitacion.*": {"queue": "celery"},
         "tasks.marcar_procesada.*": {"queue": "celery"},
+        "tasks.analizar_bases.*": {"queue": "celery"},
+        "tasks.generar_borrador.*": {"queue": "celery"},
     },
 )
 
@@ -79,5 +84,13 @@ celery_app.conf.beat_schedule = {
         "task": "tasks.detecta_renovaciones.detecta_renovaciones",
         "schedule": 86400.0,  # una vez al día
         "options": {"expires": 85000},
+    },
+    # Ventana nocturna CLT (22:00–07:00 = 01:00–10:00 UTC).
+    # Encola 500 detalles por hora → hasta 4.500 en 9 horas sin tocar cuota diurna.
+    "sync-detalles-pendientes-noche": {
+        "task": "tasks.sync_detalle.sync_detalles_pendientes",
+        "schedule": crontab(minute=0, hour="1-9"),  # 01:00–09:00 UTC cada hora
+        "kwargs": {"limit": 500},
+        "options": {"expires": 3500},
     },
 }

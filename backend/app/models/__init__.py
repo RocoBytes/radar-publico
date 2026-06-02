@@ -5,6 +5,7 @@ en alembic/env.py con: import app.models  # noqa: F401
 """
 
 from app.models.adjudicacion import Adjudicacion
+from app.models.analisis_ia import AnalisisBases, BorradorPropuesta
 from app.models.api_log import ApiQuotaLog
 from app.models.catalogos import Comuna, Region, Unspsc
 from app.models.conversacion import ConversacionIA, ConversacionMensaje
@@ -33,7 +34,9 @@ from app.models.usuario import Usuario
 
 __all__ = [
     "Adjudicacion",
+    "AnalisisBases",
     "ApiQuotaLog",
+    "BorradorPropuesta",
     "AuditAction",
     "Comuna",
     "ConversacionIA",

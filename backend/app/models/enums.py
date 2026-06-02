@@ -169,3 +169,15 @@ class EmailFrecuencia(str, enum.Enum):
     instantaneo = "instantaneo"
     diario = "diario"
     semanal = "semanal"
+
+
+class AnalisisStatus(str, enum.Enum):
+    """Estado de procesamiento de análisis IA (bases y borradores).
+
+    Refleja analisis_status en schema.sql.
+    """
+
+    pendiente = "pendiente"
+    procesando = "procesando"
+    listo = "listo"
+    error = "error"
