@@ -19,7 +19,8 @@ if TYPE_CHECKING:
     from app.models.empresa import Empresa
 
 _TIPOS_ACTIVOS_DEFAULT = (
-    '["nueva_oportunidad","recordatorio_cierre","cambio_estado",'
+    '["nueva_oportunidad","recordatorio_cierre",'
+    '"cambio_estado_externo","cambio_estado_interno",'
     '"adjudicacion_postulacion","oportunidad_futura"]'
 )
 

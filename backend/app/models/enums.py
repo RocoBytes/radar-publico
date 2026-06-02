@@ -126,12 +126,42 @@ class PipelineEstado(str, enum.Enum):
     descartada = "descartada"
 
 
+class ChecklistItemEstado(str, enum.Enum):
+    """Estado de un ítem del checklist documental.
+
+    Refleja checklist_item_estado en la BD (migración 20260603_1000).
+    """
+
+    pendiente = "pendiente"
+    en_preparacion = "en_preparacion"
+    completado = "completado"
+    no_aplica = "no_aplica"
+
+
+class ChecklistItemOrigen(str, enum.Enum):
+    """Origen de un ítem del checklist.
+
+    Refleja checklist_item_origen en la BD (migración 20260603_1000).
+    Permite futuro valor 'importado_excel' sin cambio de schema.
+    """
+
+    ia_generado = "ia_generado"
+    manual = "manual"
+
+
 class NotifTipo(str, enum.Enum):
-    """Tipo de notificación. Refleja notif_tipo en schema.sql."""
+    """Tipo de notificación. Refleja notif_tipo en schema.sql.
+
+    cambio_estado_externo: ChileCompra cambió el estado de una licitación.
+    cambio_estado_interno: el usuario movió una licitación en su pipeline.
+    Migración 20260603_1030 renombró 'cambio_estado' → 'cambio_estado_externo'
+    y reclasificó el histórico como interno.
+    """
 
     nueva_oportunidad = "nueva_oportunidad"
     recordatorio_cierre = "recordatorio_cierre"
-    cambio_estado = "cambio_estado"
+    cambio_estado_externo = "cambio_estado_externo"
+    cambio_estado_interno = "cambio_estado_interno"
     adjudicacion_postulacion = "adjudicacion_postulacion"
     oportunidad_futura = "oportunidad_futura"
     sistema = "sistema"

@@ -300,11 +300,12 @@ async def actualizar_pipeline_item(
     item.updated_at = datetime.now(UTC)
     await db.commit()
 
-    # Notificación cambio_estado: solo in_app, se crea si el estado fue modificado
+    # Notificación cambio de estado interno: solo in_app, se crea si el estado
+    # fue modificado por el usuario en su pipeline (no por ChileCompra).
     if data.estado is not None and data.estado != estado_anterior:
         notif = Notificacion(
             empresa_id=empresa.id,
-            tipo=NotifTipo.cambio_estado,
+            tipo=NotifTipo.cambio_estado_interno,
             canal=NotifCanal.in_app,
             status=NotifStatus.pendiente,
             titulo=f"Estado actualizado: {licitacion_nombre[:60]}",

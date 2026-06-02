@@ -137,6 +137,12 @@ class Settings(BaseSettings):
     )
     scraping_delay_ms: int = 2000  # delay entre requests anti-bot
 
+    # === Feature flags ===
+    # Checklist documental por pipeline_item (Feature A — operatividad-pipeline)
+    feature_pipeline_checklist: bool = False
+    # Alertas de cambio de estado externo desde ChileCompra (Feature B)
+    feature_licitacion_state_alerts: bool = False
+
     # === Observabilidad ===
     sentry_dsn: str = ""
 
