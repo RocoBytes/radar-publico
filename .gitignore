@@ -2,6 +2,11 @@
 # Radar Público — .gitignore
 # ============================================================
 
+# === Herramientas de desarrollo local ===
+.agents/
+.claude/
+skills-lock.json
+
 # === Variables de entorno (CRÍTICO: nunca commitear) ===
 .env
 .env.local
