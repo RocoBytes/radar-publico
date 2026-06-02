@@ -24,7 +24,7 @@ from app.schemas.radar import (
 
 router = APIRouter(prefix="/radares", tags=["radares"])
 
-_MAX_RADARES_POR_EMPRESA = 50
+_MAX_RADARES_POR_EMPRESA = 20
 
 
 async def _get_radar_de_empresa_o_404(

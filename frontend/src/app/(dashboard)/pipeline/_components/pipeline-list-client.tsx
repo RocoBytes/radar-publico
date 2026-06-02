@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { differenceInCalendarDays, format, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
-import { MessageSquare } from "lucide-react"
+import { Download, Loader2, MessageSquare } from "lucide-react"
 import { getPipeline } from "@/lib/api"
+import { downloadCsv } from "@/lib/csv"
 import type { PipelineEstado } from "@/types/pipeline"
 import {
   Select,
@@ -114,6 +115,7 @@ export function PipelineListClient() {
   const [estado, setEstado] = useState<PipelineEstado | "todos">("todos")
   const [scoreMin, setScoreMin] = useState<string>("")
   const [page, setPage] = useState(1)
+  const [exportando, setExportando] = useState(false)
 
   const params = {
     ...(estado !== "todos" ? { estado } : {}),
@@ -128,6 +130,29 @@ export function PipelineListClient() {
   })
 
   const totalPages = data?.total_pages ?? 1
+
+  async function handleExport() {
+    setExportando(true)
+    try {
+      const resultado = await getPipeline({ ...params, page: 1, page_size: 100 })
+      const headers = ["Estado", "Licitación", "Organismo", "Score", "Monto Estimado (CLP)", "Fecha Cierre", "Notas"]
+      const rows = resultado.items.map((item) => [
+        item.estado,
+        item.licitacion.nombre,
+        item.licitacion.organismo_nombre ?? "",
+        item.score,
+        item.licitacion.monto_estimado,
+        item.licitacion.fecha_cierre
+          ? format(new Date(item.licitacion.fecha_cierre), "dd/MM/yyyy", { locale: es })
+          : "",
+        item.notas_count,
+      ])
+      const fecha = format(new Date(), "yyyyMMdd")
+      downloadCsv(`pipeline-${fecha}`, headers, rows)
+    } finally {
+      setExportando(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -164,6 +189,20 @@ export function PipelineListClient() {
           }}
           className="w-full sm:w-52"
         />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void handleExport()}
+          disabled={exportando || isLoading || !data?.items.length}
+          className="shrink-0"
+        >
+          {exportando ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="mr-2 h-4 w-4" />
+          )}
+          {exportando ? "Exportando..." : "Exportar CSV"}
+        </Button>
       </div>
 
       {/* Cards */}

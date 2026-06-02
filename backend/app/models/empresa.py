@@ -156,6 +156,14 @@ class Empresa(Base):
         Index("idx_empresas_usuario_id", "usuario_id"),
     )
 
+    @property
+    def tiene_ticket(self) -> bool:
+        """True si la empresa tiene un ticket de ChileCompra cargado.
+
+        Requiere que la relación ticket esté eager-loaded (selectinload).
+        """
+        return self.ticket is not None
+
     def __repr__(self) -> str:
         return (
             f"<Empresa id={self.id} rut={self.rut!r} "

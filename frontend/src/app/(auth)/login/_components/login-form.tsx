@@ -33,9 +33,31 @@ interface LoginRouteResponse {
   must_change_password: boolean
 }
 
+const MAX_ATTEMPTS = 5
+const LOCKOUT_MINUTES = 30
+
+function buildErrorMessage(failedAttempts: number, retryAfterSeconds: number | null): string {
+  if (retryAfterSeconds !== null) {
+    const minutes = Math.ceil(retryAfterSeconds / 60)
+    return `Tu cuenta está bloqueada por demasiados intentos fallidos. Podés intentar de nuevo en ${minutes} minuto${minutes !== 1 ? "s" : ""}.`
+  }
+  const remaining = MAX_ATTEMPTS - failedAttempts
+  if (failedAttempts >= MAX_ATTEMPTS) {
+    return `Tu cuenta fue bloqueada por ${LOCKOUT_MINUTES} minutos. Usá "¿Olvidaste tu contraseña?" si necesitás acceder antes.`
+  }
+  if (failedAttempts === MAX_ATTEMPTS - 1) {
+    return `Credenciales inválidas. Cuidado: solo te queda 1 intento antes de que tu cuenta se bloquee por ${LOCKOUT_MINUTES} minutos.`
+  }
+  if (failedAttempts >= 2) {
+    return `Credenciales inválidas. Tu cuenta se bloqueará por ${LOCKOUT_MINUTES} minutos si fallás ${remaining} veces más.`
+  }
+  return "Credenciales inválidas"
+}
+
 export function LoginForm() {
   const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
+  const [failedAttempts, setFailedAttempts] = useState(0)
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -58,11 +80,15 @@ export function LoginForm() {
         setServerError("Demasiados intentos. Esperá unos minutos e intentá de nuevo.")
         return
       }
-      // Mensaje genérico para 401 (regla de oro #4: nunca distinguir email vs password)
-      setServerError("Credenciales inválidas")
+      const retryAfterRaw = response.headers.get("Retry-After")
+      const retryAfter = retryAfterRaw ? parseInt(retryAfterRaw, 10) : null
+      const newAttempts = retryAfter !== null ? MAX_ATTEMPTS : failedAttempts + 1
+      setFailedAttempts(newAttempts)
+      setServerError(buildErrorMessage(newAttempts, retryAfter))
       return
     }
 
+    setFailedAttempts(0)
     const data = (await response.json()) as LoginRouteResponse
 
     if (data.must_change_password) {
@@ -117,7 +143,16 @@ export function LoginForm() {
           />
 
           {serverError !== null && (
-            <p role="alert" className="text-sm font-medium text-destructive">
+            <p
+              role="alert"
+              className={`rounded-md px-3 py-2 text-sm font-medium ${
+                failedAttempts >= MAX_ATTEMPTS - 1
+                  ? "bg-destructive/10 text-destructive"
+                  : failedAttempts >= 2
+                    ? "bg-amber-50 text-amber-700"
+                    : "text-destructive"
+              }`}
+            >
               {serverError}
             </p>
           )}

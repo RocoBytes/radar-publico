@@ -65,7 +65,7 @@ class CuentaListResponse(BaseModel):
 
 
 class CambiarEstadoRequest(BaseModel):
-    accion: Literal["suspender", "reactivar"]
+    accion: Literal["suspender", "reactivar", "activar"]
 
 
 class CargarTicketRequest(BaseModel):

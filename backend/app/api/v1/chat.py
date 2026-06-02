@@ -197,7 +197,7 @@ async def _generar_respuesta(
 
     except Exception as exc:
         log.error("chat_streaming_error", error=str(exc))
-        yield f"data: {json.dumps({'tipo': 'error', 'detail': str(exc)})}\n\n"
+        yield f"data: {json.dumps({'tipo': 'error', 'detail': 'Error interno al procesar la consulta'})}\n\n"
 
 
 # ---------------------------------------------------------------------------

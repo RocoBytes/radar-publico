@@ -102,7 +102,14 @@ class AdminService:
         )
 
         await self._db.commit()
-        await self._db.refresh(usuario)
+
+        # Recargar con relaciones para que la serialización no dispare lazy loads
+        reload = await self._db.execute(
+            select(Usuario)
+            .where(Usuario.id == usuario.id)
+            .options(selectinload(Usuario.empresa).selectinload(Empresa.ticket))
+        )
+        usuario = reload.scalar_one()
 
         # Email fuera de la transacción — un fallo de envío no revierte la cuenta
         try:
@@ -140,7 +147,7 @@ class AdminService:
         result = await self._db.execute(
             select(Usuario)
             .where(*base_where)
-            .options(selectinload(Usuario.empresa))
+            .options(selectinload(Usuario.empresa).selectinload(Empresa.ticket))
             .order_by(Usuario.created_at.desc())
             .offset(offset)
             .limit(page_size)
@@ -198,8 +205,13 @@ class AdminService:
         )
 
         await self._db.commit()
-        await self._db.refresh(usuario)
-        return usuario
+
+        reload = await self._db.execute(
+            select(Usuario)
+            .where(Usuario.id == usuario_id)
+            .options(selectinload(Usuario.empresa).selectinload(Empresa.ticket))
+        )
+        return reload.scalar_one()
 
     async def cargar_ticket(
         self,

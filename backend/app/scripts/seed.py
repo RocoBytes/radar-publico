@@ -125,7 +125,7 @@ async def _seed_regiones() -> int:
                 {
                     "codigo": row["codigo"],
                     "nombre": row["nombre"],
-                    "nombre_corto": row.get("nombre_corto") or None,
+                    "numero_romano": None,
                     "orden": int(row["orden"]) if row.get("orden") else None,
                 }
             )
@@ -206,17 +206,22 @@ async def _seed_unspsc() -> int:
     by_nivel: dict[int, list[dict[str, object]]] = {}
     with csv_path.open(encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            nivel = int(row["nivel"])
+            codigo = row["codigo"].strip()
+            # nivel en el CSV es profundidad (1-4); la BD usa longitud del código (2/4/6/8)
+            nivel = len(codigo)
+            if nivel not in (2, 4, 6, 8):
+                continue
             entry: dict[str, object] = {
-                "codigo": row["codigo"],
+                "codigo": codigo,
                 "nombre_es": row["nombre_es"],
                 "descripcion_es": row.get("descripcion_es") or None,
                 "nivel": nivel,
                 "segmento": row.get("segmento") or None,
                 "familia": row.get("familia") or None,
                 "clase": row.get("clase") or None,
+                "commodity": row.get("commodity") or None,
                 "parent_codigo": row.get("parent_codigo") or None,
-                "activo": True,
+                "nombre_en": None,
             }
             by_nivel.setdefault(nivel, []).append(entry)
 

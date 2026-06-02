@@ -14,6 +14,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, DbDep, EmpresaDep
@@ -172,7 +173,14 @@ async def crear_pipeline_item(
         licitacion_codigo=data.licitacion_codigo,
     )
     db.add(item)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"La licitación '{data.licitacion_codigo}' ya está en el pipeline",
+        ) from None
 
     item = await _get_item_de_empresa_o_404(item.id, empresa.id, db, con_notas=True)
     return _build_detail(item)

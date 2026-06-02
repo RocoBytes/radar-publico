@@ -88,13 +88,12 @@ async def crear_interes(
         )
     )
     if existente.scalar_one_or_none() is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"Ya existe un interés de tipo '{data.tipo}' "
-                f"con valor '{data.valor}' para esta empresa"
-            ),
+        msg = (
+            "Esta palabra clave ya está en tus intereses."
+            if data.tipo.value == "keyword"
+            else "Este rubro ya está en tus intereses."
         )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=msg)
 
     # Verificar límite de intereses por empresa
     count_result = await db.execute(

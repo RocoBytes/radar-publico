@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { differenceInCalendarDays, format, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
-import { Search } from "lucide-react"
+import { Download, Loader2, Search } from "lucide-react"
 import { getLicitaciones } from "@/lib/api"
+import { downloadCsv } from "@/lib/csv"
 import type { LicitacionEstado, LicitacionFiltros } from "@/types/licitacion"
 import {
   Table,
@@ -115,6 +116,7 @@ export function LicitacionesListClient() {
   )
   const [page, setPage] = useState(Number(searchParams.get("page") ?? "1"))
   const [debouncedQ, setDebouncedQ] = useState(q)
+  const [exportando, setExportando] = useState(false)
 
   // Debounce búsqueda 300ms
   useEffect(() => {
@@ -156,6 +158,27 @@ export function LicitacionesListClient() {
 
   const totalPages = data?.total_pages ?? 1
 
+  async function handleExport() {
+    setExportando(true)
+    try {
+      const resultado = await getLicitaciones({ ...filtros, page: 1, page_size: 100 })
+      const headers = ["Código", "Nombre", "Organismo", "Estado", "Monto Estimado (CLP)", "Fecha Publicación", "Fecha Cierre"]
+      const rows = resultado.items.map((item) => [
+        item.codigo,
+        item.nombre,
+        item.organismo_nombre ?? "",
+        item.estado,
+        item.monto_estimado,
+        item.fecha_publicacion ? format(new Date(item.fecha_publicacion), "dd/MM/yyyy", { locale: es }) : "",
+        item.fecha_cierre ? format(new Date(item.fecha_cierre), "dd/MM/yyyy", { locale: es }) : "",
+      ])
+      const fecha = format(new Date(), "yyyyMMdd")
+      downloadCsv(`licitaciones-${fecha}`, headers, rows)
+    } finally {
+      setExportando(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Filtros */}
@@ -188,6 +211,20 @@ export function LicitacionesListClient() {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void handleExport()}
+          disabled={exportando || isLoading || !data?.items.length}
+          className="shrink-0"
+        >
+          {exportando ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="mr-2 h-4 w-4" />
+          )}
+          {exportando ? "Exportando..." : "Exportar CSV"}
+        </Button>
       </div>
 
       {/* Tabla */}

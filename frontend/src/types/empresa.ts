@@ -9,6 +9,9 @@ export interface EmpresaProfile {
   tamano: EmpresaTamano | null
   ano_fundacion: number | null
   numero_empleados: number | null
+  regiones_operacion: string[]
+  sello_empresa_mujer: boolean
+  inscrito_chileproveedores: boolean
   contacto_telefono: string | null
   contacto_direccion: string | null
   onboarding_completado: boolean
@@ -20,6 +23,10 @@ export interface EmpresaUpdateRequest {
   tamano?: EmpresaTamano | null
   ano_fundacion?: number | null
   numero_empleados?: number | null
+  regiones_operacion?: string[]
+  sello_empresa_mujer?: boolean
+  inscrito_chileproveedores?: boolean
   contacto_telefono?: string | null
   contacto_direccion?: string | null
+  onboarding_completado?: boolean
 }

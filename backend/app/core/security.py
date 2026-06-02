@@ -10,7 +10,8 @@ import secrets
 import string
 
 import bcrypt as _bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 from pydantic import BaseModel
 
 from app.config import settings
@@ -66,7 +67,7 @@ def decode_access_token(token: str) -> AccessTokenPayload:
         if raw.get("type") != "access":
             raise InvalidTokenError("Tipo de token incorrecto")
         return AccessTokenPayload(**raw)
-    except JWTError as exc:
+    except PyJWTError as exc:
         raise InvalidTokenError(str(exc)) from exc
 
 
