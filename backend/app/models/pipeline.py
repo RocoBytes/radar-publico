@@ -124,12 +124,14 @@ class PipelineItem(Base):
     )
 
     # Relación con checklist documental (migración 20260603_1000)
+    # lazy="noload": el servicio consulta PipelineChecklistItem directamente;
+    # cargar en cascade evita N+1 en listados donde el checklist no se renderiza.
     checklist_items: Mapped[list["PipelineChecklistItem"]] = relationship(
         "PipelineChecklistItem",
         back_populates="pipeline_item",
         cascade="all, delete-orphan",
         order_by="PipelineChecklistItem.orden",
-        lazy="selectin",
+        lazy="noload",
     )
 
     __table_args__ = (
