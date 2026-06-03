@@ -27,8 +27,8 @@ services:
       ENVIRONMENT: production
       LOG_LEVEL: INFO
       CORS_ORIGINS: ${CORS_ORIGINS}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET requerido. Generá uno con: openssl rand -hex 32}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY requerido. Generá uno con: openssl rand -base64 24}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET requerido en .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY requerido en .env}
     restart: always
     command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --access-logfile - --error-logfile -
 
@@ -39,7 +39,7 @@ services:
     environment:
       ENVIRONMENT: production
       LOG_LEVEL: INFO
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY requerido. Generá uno con: openssl rand -base64 24}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY requerido en .env}
     restart: always
     command: celery -A app.celery_app worker --loglevel=info --concurrency=4
 
@@ -58,7 +58,7 @@ services:
     environment:
       ENVIRONMENT: production
       LOG_LEVEL: INFO
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY requerido. Generá uno con: openssl rand -base64 24}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY requerido en .env}
       PLAYWRIGHT_HEADLESS: "true"
     restart: always
     deploy:
