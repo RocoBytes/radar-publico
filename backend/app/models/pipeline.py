@@ -3,6 +3,8 @@
 Tablas cubiertas:
 - pipeline_items: seguimiento de una licitación por una empresa
 - pipeline_notas: notas textuales asociadas a un pipeline_item
+- pipeline_checklist_items: checklist documental por pipeline_item
+- pipeline_archivos: archivos adjuntos por pipeline_item
 """
 
 from datetime import datetime
@@ -11,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 import uuid
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     Enum,
@@ -131,6 +134,16 @@ class PipelineItem(Base):
         back_populates="pipeline_item",
         cascade="all, delete-orphan",
         order_by="PipelineChecklistItem.orden",
+        lazy="noload",
+    )
+
+    # lazy="noload" por la misma razón que checklist_items: los archivos
+    # solo se cargan cuando el servicio los necesita explícitamente.
+    archivos: Mapped[list["PipelineArchivo"]] = relationship(
+        "PipelineArchivo",
+        back_populates="item",
+        cascade="all, delete-orphan",
+        order_by="PipelineArchivo.created_at",
         lazy="noload",
     )
 
@@ -260,4 +273,49 @@ class PipelineChecklistItem(Base):
         return (
             f"<PipelineChecklistItem id={self.id}"
             f" nombre={self.nombre!r} estado={self.estado}>"
+        )
+
+
+class PipelineArchivo(Base):
+    """Archivo adjunto asociado a un ítem del pipeline.
+
+    Almacenado en Cloudflare R2 (compatible S3).
+    storage_path es la ruta relativa al bucket — nunca una URL pública.
+    """
+
+    __tablename__ = "pipeline_archivos"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
+
+    pipeline_item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("pipeline_items.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    nombre_original: Mapped[str] = mapped_column(String(500), nullable=False)
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    mime_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tamano_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    item: Mapped["PipelineItem"] = relationship(
+        "PipelineItem", back_populates="archivos"
+    )
+
+    __table_args__ = (
+        Index("idx_archivos_pipeline_item", "pipeline_item_id"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<PipelineArchivo id={self.id}"
+            f" nombre={self.nombre_original!r} item_id={self.pipeline_item_id}>"
         )

@@ -47,9 +47,23 @@ export default async function DashboardLayout({
         redirect("/login")
       }
 
+      const refreshData = (await refreshResponse.json().catch(() => null)) as {
+        access_token?: string
+      } | null
+      const newToken = refreshData?.access_token
+
+      if (!newToken) {
+        redirect("/login")
+      }
+
+      try {
+        user = await getMe(newToken)
+      } catch {
+        redirect("/login")
+      }
+    } else {
       redirect("/login")
     }
-    redirect("/login")
   }
 
   if (user.must_change_password) {

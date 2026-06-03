@@ -17,6 +17,17 @@ export interface EmpresaProfile {
   onboarding_completado: boolean
 }
 
+export interface TicketStatus {
+  tiene_ticket: boolean
+  status: string | null
+  ticket_ultimos_4: string | null
+  cargado_at: string | null
+  ultima_validacion_at: string | null
+  ultimo_error: string | null
+  cuota_diaria_max: number | null
+  requests_hoy: number
+}
+
 export interface EmpresaUpdateRequest {
   nombre_fantasia?: string | null
   giros?: string[] | null

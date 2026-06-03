@@ -3,19 +3,22 @@
 GET  /api/v1/empresa/me              — retorna la empresa del proveedor
 PATCH /api/v1/empresa/me             — actualiza datos editables de la empresa
 POST /api/v1/empresa/ticket-request  — solicita activación del ticket ChileCompra
+GET  /api/v1/empresa/ticket-status   — estado del ticket ChileCompra de la empresa
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import structlog
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import and_, func, select
 
 from app.api.deps import CurrentUser, DbDep
 from app.core import cache
+from app.models.api_log import ApiQuotaLog
 from app.models.empresa import Empresa
-from app.schemas.empresa import EmpresaResponse, EmpresaUpdateRequest
+from app.models.ticket import TicketApi
+from app.schemas.empresa import EmpresaResponse, EmpresaUpdateRequest, TicketStatusResponse
 
 logger = structlog.get_logger(__name__)
 
@@ -120,4 +123,44 @@ async def solicitar_ticket(
 
     return TicketRequestResponse(
         mensaje="Solicitud enviada al equipo de soporte"
+    )
+
+
+@router.get("/ticket-status", response_model=TicketStatusResponse)
+async def obtener_ticket_status(
+    db: DbDep,
+    current_user: CurrentUser,
+) -> TicketStatusResponse:
+    """Estado del ticket ChileCompra de la empresa del usuario autenticado."""
+    empresa = await _get_empresa_o_404(db, current_user)
+
+    result = await db.execute(
+        select(TicketApi).where(TicketApi.empresa_id == empresa.id)
+    )
+    ticket = result.scalar_one_or_none()
+
+    if ticket is None:
+        return TicketStatusResponse(tiene_ticket=False)
+
+    # Requests de hoy
+    hoy = date.today()
+    count_result = await db.execute(
+        select(func.count(ApiQuotaLog.id)).where(
+            and_(
+                ApiQuotaLog.ticket_id == ticket.id,
+                func.date(ApiQuotaLog.created_at) == hoy,
+            )
+        )
+    )
+    requests_hoy: int = count_result.scalar_one()
+
+    return TicketStatusResponse(
+        tiene_ticket=True,
+        status=ticket.status.value,
+        ticket_ultimos_4=ticket.ticket_ultimos_4,
+        cargado_at=ticket.cargado_at,
+        ultima_validacion_at=ticket.ultima_validacion_at,
+        ultimo_error=ticket.ultimo_error,
+        cuota_diaria_max=ticket.cuota_diaria_max,
+        requests_hoy=requests_hoy,
     )

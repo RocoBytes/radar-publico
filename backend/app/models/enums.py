@@ -211,3 +211,12 @@ class AnalisisStatus(str, enum.Enum):
     procesando = "procesando"
     listo = "listo"
     error = "error"
+
+
+class PlanAnualStatus(str, enum.Enum):
+    """Estado de una línea del plan anual de compras. Refleja plan_anual_status en schema.sql."""
+
+    planificada = "planificada"
+    publicada = "publicada"
+    adjudicada = "adjudicada"
+    cancelada = "cancelada"

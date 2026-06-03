@@ -25,7 +25,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=F
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with _db_session.AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
 
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]

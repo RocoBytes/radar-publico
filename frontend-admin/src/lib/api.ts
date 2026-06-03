@@ -41,7 +41,7 @@ async function apiFetch<T>(
 
   if (res.status === 401 && !skipRefresh) {
     // Intentar refresh del token
-    const refreshRes = await fetch(`${BACKEND_URL}/api/v1/auth/refresh`, {
+    const refreshRes = await fetch("/api/auth/refresh", {
       method: "POST",
       credentials: "include",
     });

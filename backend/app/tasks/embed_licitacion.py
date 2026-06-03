@@ -86,10 +86,8 @@ async def _run(codigo: str) -> dict[str, int]:
     vectores = await embed_batch([texto], input_type="document")
     duracion_ms = int((datetime.now(UTC) - inicio).total_seconds() * 1000)
 
-    import tiktoken
-
-    enc = tiktoken.get_encoding("cl100k_base")
-    tokens = len(enc.encode(texto))
+    # Aproximación: 4 chars ≈ 1 token. Evita descarga de tiktoken en contenedor sin red.
+    tokens = max(1, len(texto) // 4)
     costo = tokens * _COSTO_USD_POR_TOKEN
 
     async with AsyncSessionLocal() as session:

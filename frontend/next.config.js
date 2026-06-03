@@ -27,7 +27,7 @@ const nextConfig = {
               "script-src 'self'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
-              `connect-src 'self' ${apiUrl} https://*.sentry.io`,
+              `connect-src 'self' ${[apiUrl, "https://*.sentry.io"].filter(Boolean).join(" ")}`,
               "font-src 'self'",
               "frame-ancestors 'none'",
             ].join("; "),

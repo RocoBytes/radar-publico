@@ -5,7 +5,7 @@ Cubre:
   Epic 3   (US-3.1–3.5)— Onboarding de empresa
   Epic 3.4 (US-3.4)    — Intereses comerciales
   Epic 9.2 (US-9.2)    — Feed de renovaciones de contratos
-  Epic 9.1 (US-9.1)    — Plan anual (NOT implementado — xfail)
+  Epic 9.1 (US-9.1)    — Plan anual de compras
   Epic 9.3 (US-9.3)    — Patrones estacionales (NOT implementado — xfail)
   US-8.2               — Vista por radar (NOT implementado — xfail)
   Infraestructura      — /health, /catalogos/regiones, /catalogos/unspsc
@@ -773,33 +773,52 @@ async def test_renovaciones_paginacion(
 
 
 # ===========================================================================
-# Epic 9.1 y 9.3 — NOT implementados (xfail documenta el gap)
+# Epic 9.1 — Plan Anual (implementado Sprint 6)
+# Epic 9.3 — NOT implementado (xfail documenta el gap)
 # ===========================================================================
 
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    reason=(
-        "spec US-9.1: Plan Anual de Compras no está implementado en v1. "
-        "No existe endpoint /api/v1/futuro/plan-anual"
-    ),
-    strict=False,
-)
-async def test_plan_anual_no_implementado(
+async def test_plan_anual_retorna_lista_paginada(
     client: AsyncClient,
     proveedor_activo: dict[str, Any],
 ) -> None:
-    """GET /futuro/plan-anual → documenta que el endpoint no existe aún (US-9.1).
-
-    Se espera 404/405. Si algún día se implementa, este test dejará de ser xfail.
-    """
+    """GET /futuro/plan-anual → retorna lista paginada con estructura correcta (US-9.1)."""
     headers = proveedor_activo["headers"]
     resp = await client.get("/api/v1/futuro/plan-anual", headers=headers)
-    # Si el endpoint existiera, esperaríamos 200 — documentamos la ausencia
-    assert resp.status_code not in (404, 405), (
-        f"US-9.1 Plan Anual sigue sin implementar (status={resp.status_code})"
-    )
+    assert resp.status_code == 200, f"Esperado 200, got {resp.status_code}: {resp.text}"
+    data = resp.json()
+    assert "total" in data
+    assert "page" in data
+    assert "page_size" in data
+    assert "items" in data
+    assert isinstance(data["items"], list)
+    assert data["page"] == 1
+    assert data["page_size"] == 25
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_plan_anual_requiere_auth(client: AsyncClient) -> None:
+    """GET /futuro/plan-anual → 401 sin token (US-9.1)."""
+    resp = await client.get("/api/v1/futuro/plan-anual")
+    assert resp.status_code == 401
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_plan_anual_filtro_ano(
+    client: AsyncClient,
+    proveedor_activo: dict[str, Any],
+) -> None:
+    """GET /futuro/plan-anual?ano=2024 → solo devuelve líneas del año solicitado (US-9.1)."""
+    headers = proveedor_activo["headers"]
+    resp = await client.get("/api/v1/futuro/plan-anual?ano=2024", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    for item in data["items"]:
+        assert item["ano"] == 2024
 
 
 @pytest.mark.e2e

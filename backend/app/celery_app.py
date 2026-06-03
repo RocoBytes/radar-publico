@@ -29,6 +29,7 @@ celery_app = Celery(
         "app.tasks.procesar_notificaciones",  # Sprint 5: despacho de notificaciones
         "app.tasks.generar_recordatorios",  # Sprint 5: recordatorios de cierre
         "app.tasks.detecta_renovaciones",  # Sprint 6: feed de renovaciones
+        "app.tasks.sync_plan_anual",  # Sprint 6: plan anual de compras
     ],
 )
 
@@ -45,18 +46,6 @@ celery_app.conf.update(
     task_reject_on_worker_lost=True,
     # Regla de oro #29: toda tarea debe ser idempotente
     # task_acks_on_failure_or_timeout=False  # descomentear si necesitas rollback manual
-    # Routing: tareas de scraping van a la queue dedicada (worker con browsers)
-    task_routes={
-        # scraping y parseo PDF → worker con browsers + pymupdf
-        "tasks.scrape_bases.*": {"queue": "scraping"},
-        "tasks.procesar_pdf.*": {"queue": "scraping"},
-        # embeddings → cola default (I/O HTTP puro a Voyage)
-        "tasks.embed_chunks.*": {"queue": "celery"},
-        "tasks.embed_licitacion.*": {"queue": "celery"},
-        "tasks.marcar_procesada.*": {"queue": "celery"},
-        "tasks.analizar_bases.*": {"queue": "celery"},
-        "tasks.generar_borrador.*": {"queue": "celery"},
-    },
 )
 
 # Beat schedule: sincronización cada 15 minutos (CLAUDE.md §6.3)
@@ -92,6 +81,14 @@ celery_app.conf.beat_schedule = {
         "task": "tasks.sync_detalle.sync_detalles_pendientes",
         "schedule": crontab(minute=0, hour="1-9"),  # 01:00–09:00 UTC cada hora
         "kwargs": {"limit": 500},
+        "options": {"expires": 3500},
+    },
+    # Plan Anual de Compras: día 6 de cada mes a las 02:00 UTC
+    # = 23:00 CLT invierno (UTC-3) / 22:00 CLT verano (UTC-4).
+    # Ambos horarios están dentro de la ventana nocturna 22:00-07:00 CLT.
+    "sync-plan-anual-mensual": {
+        "task": "tasks.sync_plan_anual.sync_plan_anual",
+        "schedule": crontab(hour=2, minute=0, day_of_month=6),
         "options": {"expires": 3500},
     },
 }

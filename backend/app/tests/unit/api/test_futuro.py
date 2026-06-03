@@ -1,11 +1,18 @@
-"""Tests unitarios para GET /api/v1/futuro/renovaciones.
+"""Tests unitarios para GET /api/v1/futuro/renovaciones y GET /api/v1/futuro/plan-anual.
 
-Cubre:
+Cubre renovaciones:
 - Sin licitaciones renovables → lista vacía.
 - Licitación renovable adjudicada → aparece en el feed.
 - Filtro por UNSPSC: solo aparece si el item coincide con intereses de la empresa.
 - dias_para_termino se calcula correctamente.
 - Paginación funciona.
+
+Cubre plan-anual:
+- Sin datos → lista vacía.
+- Línea del año correcto → aparece con campos esperados.
+- Filtro por año excluye otras anualidades.
+- Filtro ?q= busca por descripcion (ILIKE).
+- Sin token → 401.
 """
 
 from __future__ import annotations
@@ -20,7 +27,7 @@ from sqlalchemy import delete
 
 from app.core.security import create_access_token
 from app.models.empresa import Empresa
-from app.models.enums import LicitacionEstado, UserRole, UserStatus
+from app.models.enums import LicitacionEstado, PlanAnualStatus, UserRole, UserStatus
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -37,6 +44,7 @@ def _auth(user_id: str) -> dict[str, str]:
 async def _limpieza(db_session: AsyncSession) -> None:  # type: ignore[misc]
     from app.models.interes import Interes
     from app.models.licitacion import Licitacion, LicitacionItem
+    from app.models.plan_anual import PlanAnualLinea
 
     async def _borrar() -> None:
         await db_session.execute(
@@ -49,6 +57,9 @@ async def _limpieza(db_session: AsyncSession) -> None:  # type: ignore[misc]
         )
         await db_session.execute(
             delete(Interes).where(Interes.valor.in_(["73", "80"]))
+        )
+        await db_session.execute(
+            delete(PlanAnualLinea).where(PlanAnualLinea.descripcion.like("TEST-PAC%"))
         )
         await db_session.commit()
 
@@ -119,8 +130,46 @@ async def _crear_licitacion_renovable(
     await db_session.commit()
 
 
+async def _crear_plan_linea(
+    db_session: AsyncSession,
+    *,
+    ano: int,
+    descripcion: str,
+    codigo_organismo: int,
+    status: PlanAnualStatus = PlanAnualStatus.planificada,
+) -> Any:
+    """Inserta una PlanAnualLinea directamente en BD y retorna la instancia."""
+    from app.models.organismo import Organismo
+    from app.models.plan_anual import PlanAnualLinea
+    from sqlalchemy import select
+
+    # Crear el organismo si no existe (FK real, no puede ser nulo)
+    result = await db_session.execute(
+        select(Organismo).where(Organismo.codigo_organismo == codigo_organismo)
+    )
+    if result.scalar_one_or_none() is None:
+        db_session.add(
+            Organismo(
+                codigo_organismo=codigo_organismo,
+                nombre=f"Organismo Test {codigo_organismo}",
+            )
+        )
+        await db_session.flush()
+
+    linea = PlanAnualLinea(
+        ano=ano,
+        codigo_organismo=codigo_organismo,
+        descripcion=descripcion,
+        status=status,
+    )
+    db_session.add(linea)
+    await db_session.commit()
+    await db_session.refresh(linea)
+    return linea
+
+
 # ---------------------------------------------------------------------------
-# Tests
+# Tests — renovaciones
 # ---------------------------------------------------------------------------
 
 
@@ -298,3 +347,142 @@ async def test_renovaciones_horizonte_excluye_lejanos(
     codigos = {i["licitacion_codigo"] for i in r.json()["items"]}
     assert "TEST-FUT-CERCA" in codigos
     assert "TEST-FUT-LEJOS" not in codigos
+
+
+# ---------------------------------------------------------------------------
+# Tests — plan-anual
+# ---------------------------------------------------------------------------
+
+# Código de organismo ficticio para tests de plan anual. Se crea en BD si no existe.
+_ORGANISMO_PAC = 99999
+
+
+@pytest.mark.asyncio
+async def test_plan_anual_lista_vacia(
+    client: AsyncClient,
+    empresa_con_usuario: tuple[Any, Empresa],
+) -> None:
+    """Sin líneas de plan anual → 200, total=0, items=[]."""
+    user, _ = empresa_con_usuario
+    r = await client.get(
+        "/api/v1/futuro/plan-anual",
+        headers=_auth(str(user.id)),
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 0
+    assert data["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_plan_anual_aparece_linea_del_ano(
+    client: AsyncClient,
+    empresa_con_usuario: tuple[Any, Empresa],
+    db_session: AsyncSession,
+) -> None:
+    """Línea con ano=2025 → aparece al pedir ?ano=2025 con campos requeridos."""
+    user, _ = empresa_con_usuario
+
+    await _crear_plan_linea(
+        db_session,
+        ano=2025,
+        descripcion="TEST-PAC Servicio de consultoría 2025",
+        codigo_organismo=_ORGANISMO_PAC,
+    )
+
+    r = await client.get(
+        "/api/v1/futuro/plan-anual?ano=2025",
+        headers=_auth(str(user.id)),
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] >= 1
+    item = next(
+        (i for i in data["items"] if "TEST-PAC" in i.get("descripcion", "")),
+        None,
+    )
+    assert item is not None, "La línea TEST-PAC no aparece en la respuesta"
+    assert item["ano"] == 2025
+    assert "id" in item
+    assert "descripcion" in item
+    assert "status" in item
+
+
+@pytest.mark.asyncio
+async def test_plan_anual_filtro_ano_excluye_otro_ano(
+    client: AsyncClient,
+    empresa_con_usuario: tuple[Any, Empresa],
+    db_session: AsyncSession,
+) -> None:
+    """Línea 2024 y línea 2025 → ?ano=2025 solo retorna la de 2025."""
+    user, _ = empresa_con_usuario
+
+    await _crear_plan_linea(
+        db_session,
+        ano=2024,
+        descripcion="TEST-PAC Linea ano 2024",
+        codigo_organismo=_ORGANISMO_PAC,
+    )
+    await _crear_plan_linea(
+        db_session,
+        ano=2025,
+        descripcion="TEST-PAC Linea ano 2025",
+        codigo_organismo=_ORGANISMO_PAC,
+    )
+
+    r = await client.get(
+        "/api/v1/futuro/plan-anual?ano=2025",
+        headers=_auth(str(user.id)),
+    )
+    assert r.status_code == 200
+    data = r.json()
+
+    descripciones = [i["descripcion"] for i in data["items"]]
+    assert any("TEST-PAC Linea ano 2025" in d for d in descripciones)
+    assert all("TEST-PAC Linea ano 2024" not in d for d in descripciones)
+
+
+@pytest.mark.asyncio
+async def test_plan_anual_filtro_q(
+    client: AsyncClient,
+    empresa_con_usuario: tuple[Any, Empresa],
+    db_session: AsyncSession,
+) -> None:
+    """Filtro ?q= busca por descripcion: coincidencia aparece, no-coincidencia no aparece."""
+    user, _ = empresa_con_usuario
+
+    await _crear_plan_linea(
+        db_session,
+        ano=2025,
+        descripcion="TEST-PAC Servicios de limpieza industrial",
+        codigo_organismo=_ORGANISMO_PAC,
+    )
+
+    # Búsqueda que sí coincide
+    r_match = await client.get(
+        "/api/v1/futuro/plan-anual?ano=2025&q=limpieza",
+        headers=_auth(str(user.id)),
+    )
+    assert r_match.status_code == 200
+    descripciones_match = [i["descripcion"] for i in r_match.json()["items"]]
+    assert any("limpieza" in d.lower() for d in descripciones_match), (
+        "El filtro q=limpieza debería retornar la línea de limpieza"
+    )
+
+    # Búsqueda que NO coincide
+    r_no_match = await client.get(
+        "/api/v1/futuro/plan-anual?ano=2025&q=tecnologia",
+        headers=_auth(str(user.id)),
+    )
+    assert r_no_match.status_code == 200
+    descripciones_no_match = [i["descripcion"] for i in r_no_match.json()["items"]]
+    assert not any("TEST-PAC Servicios de limpieza" in d for d in descripciones_no_match), (
+        "El filtro q=tecnologia no debería retornar la línea de limpieza"
+    )
+
+
+@pytest.mark.asyncio
+async def test_plan_anual_requiere_auth(client: AsyncClient) -> None:
+    """GET /futuro/plan-anual sin token → 401."""
+    r = await client.get("/api/v1/futuro/plan-anual")
+    assert r.status_code == 401

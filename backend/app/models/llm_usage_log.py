@@ -9,7 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 import uuid
 
-from sqlalchemy import BigInteger, ForeignKey, Index, Numeric, String
+from sqlalchemy import BigInteger, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -49,6 +49,9 @@ class LlmUsageLog(Base):
 
     # Estado de la llamada: 'ok', 'error', 'timeout', etc.
     status: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    duracion_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_mensaje: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),

@@ -63,3 +63,18 @@ class EmpresaUpdateRequest(BaseModel):
     contacto_telefono: str | None = None
     contacto_direccion: str | None = None
     onboarding_completado: bool | None = None
+
+
+class TicketStatusResponse(BaseModel):
+    """Estado del ticket ChileCompra de la empresa."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    tiene_ticket: bool
+    status: str | None = None  # TicketStatus como string para evitar import circular
+    ticket_ultimos_4: str | None = None
+    cargado_at: datetime | None = None
+    ultima_validacion_at: datetime | None = None
+    ultimo_error: str | None = None
+    cuota_diaria_max: int | None = None
+    requests_hoy: int = 0

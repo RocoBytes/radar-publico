@@ -11,7 +11,7 @@ from app.models.catalogos import Comuna, Region, Unspsc
 from app.models.conversacion import ConversacionIA, ConversacionMensaje
 from app.models.documento_base import DocumentoBase, DocumentoChunk
 from app.models.empresa import Empresa
-from app.models.enums import EmailFrecuencia, MensajeRol, PipelineEstado
+from app.models.enums import EmailFrecuencia, MensajeRol, PipelineEstado, PlanAnualStatus
 from app.models.eventos_auditoria import AuditAction, EventoAuditoria
 from app.models.interes import Interes, InteresTipo
 from app.models.llm_usage_log import LlmUsageLog
@@ -23,8 +23,10 @@ from app.models.licitacion import (
 )
 from app.models.notificacion import Notificacion
 from app.models.organismo import Organismo
+from app.models.ordenes_compra import OrdenesCompra
 from app.models.password_reset import PasswordResetToken
-from app.models.pipeline import PipelineItem, PipelineNota
+from app.models.pipeline import PipelineArchivo, PipelineChecklistItem, PipelineItem, PipelineNota
+from app.models.plan_anual import PlanAnualLinea
 from app.models.preferencias import PreferenciasNotificaciones
 from app.models.proveedor import Proveedor
 from app.models.radar import Radar
@@ -55,12 +57,17 @@ __all__ = [
     "EmailFrecuencia",
     "MensajeRol",
     "Notificacion",
+    "OrdenesCompra",
     "PreferenciasNotificaciones",
     "Organismo",
     "PasswordResetToken",
+    "PipelineArchivo",
     "PipelineEstado",
+    "PipelineChecklistItem",
     "PipelineItem",
     "PipelineNota",
+    "PlanAnualLinea",
+    "PlanAnualStatus",
     "Proveedor",
     "Radar",
     "RefreshToken",
