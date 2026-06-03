@@ -31,15 +31,10 @@ from sqlalchemy import delete
 async def _limpieza() -> None:  # type: ignore[misc]
     from app.db.session import AsyncSessionLocal
     from app.models.notificacion import Notificacion
-    from app.models.preferencias import PreferenciasNotificaciones
 
     async def _borrar() -> None:
         async with AsyncSessionLocal() as session:
-            await session.execute(
-                delete(Notificacion).where(
-                    Notificacion.titulo.like("TEST-WA%")
-                )
-            )
+            await session.execute(delete(Notificacion).where(Notificacion.titulo.like("TEST-WA%")))
             await session.commit()
 
     await _borrar()
@@ -94,11 +89,11 @@ async def empresa_con_whatsapp() -> dict[str, object]:  # type: ignore[misc]
 
     yield ids  # type: ignore[misc]
 
-    from app.db.session import AsyncSessionLocal as C
-    from app.models.usuario import Usuario as U
+    from app.db.session import AsyncSessionLocal
+    from app.models.usuario import Usuario
 
-    async with C() as session:
-        u = await session.get(U, ids["usuario_id"])
+    async with AsyncSessionLocal() as session:
+        u = await session.get(Usuario, ids["usuario_id"])
         if u is not None:
             await session.delete(u)
             await session.commit()

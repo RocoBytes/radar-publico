@@ -55,7 +55,7 @@ class AdjudicacionItemAPI(BaseModel):
 
     Validado contra respuesta real de la API (2026-05-17):
       RutProveedor, NombreProveedor, Cantidad, MontoUnitario
-    El monto total del ítem es Cantidad × MontoUnitario.
+    El monto total del ítem es Cantidad x MontoUnitario.
     """
 
     RutProveedor: str | None = None
@@ -159,9 +159,7 @@ class LicitacionesResponseAPI(BaseModel):
     Cantidad: int = 0
     FechaCreacion: datetime | None = None
     Version: str | None = None
-    Listado: list[LicitacionListItemAPI | LicitacionDetalleAPI] = Field(
-        default_factory=list
-    )
+    Listado: list[LicitacionListItemAPI | LicitacionDetalleAPI] = Field(default_factory=list)
 
 
 class LicitacionesListadoResponseAPI(BaseModel):

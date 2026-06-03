@@ -31,9 +31,7 @@ async def test_login_ok(client: AsyncClient, make_user: UserFactory) -> None:
 
 
 @pytest.mark.asyncio
-async def test_login_credenciales_invalidas(
-    client: AsyncClient, make_user: UserFactory
-) -> None:
+async def test_login_credenciales_invalidas(client: AsyncClient, make_user: UserFactory) -> None:
     await make_user(email="login_bad@test.cl", password="TestPass123!")
     resp = await client.post(
         "/api/v1/auth/login",

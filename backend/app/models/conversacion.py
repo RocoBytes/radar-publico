@@ -115,9 +115,7 @@ class ConversacionMensaje(Base):
 
     tokens_output: Mapped[int | None] = mapped_column(nullable=True)
 
-    costo_estimado: Mapped[Decimal | None] = mapped_column(
-        Numeric(10, 6), nullable=True
-    )
+    costo_estimado: Mapped[Decimal | None] = mapped_column(Numeric(10, 6), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

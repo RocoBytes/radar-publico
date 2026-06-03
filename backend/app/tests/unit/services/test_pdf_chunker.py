@@ -91,8 +91,7 @@ def test_chunker_tokens_correctos() -> None:
     for chunk in resultado:
         tokens_reales = _contar_tokens(chunk.contenido)
         assert tokens_reales <= max_tokens, (
-            f"Chunk {chunk.orden} tiene {tokens_reales} tokens, "
-            f"máximo permitido {max_tokens}"
+            f"Chunk {chunk.orden} tiene {tokens_reales} tokens, " f"máximo permitido {max_tokens}"
         )
 
 

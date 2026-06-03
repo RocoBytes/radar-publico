@@ -72,9 +72,7 @@ async def empresa_con_usuario(
         rut="76.123.456-K",
         razon_social="Empresa Test SpA",
     )
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == user.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == user.id))
     empresa: Empresa = result.scalar_one()
     return user, empresa
 
@@ -94,9 +92,7 @@ async def segunda_empresa_con_usuario(
         rut="77.999.888-7",
         razon_social="Segunda Empresa SpA",
     )
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == user.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == user.id))
     empresa: Empresa = result.scalar_one()
     return user, empresa
 
@@ -332,7 +328,5 @@ async def test_delete_interes_ajeno(
     assert resp.status_code == 403
 
     # El interés sigue existiendo
-    check = await db_session.execute(
-        select(Interes).where(Interes.id == interes_de_a.id)
-    )
+    check = await db_session.execute(select(Interes).where(Interes.id == interes_de_a.id))
     assert check.scalar_one_or_none() is not None

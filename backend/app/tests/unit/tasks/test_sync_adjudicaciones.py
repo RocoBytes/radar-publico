@@ -126,10 +126,14 @@ async def test_basico_un_item_crea_proveedor_y_adjudicacion(
     assert prov is not None, "Proveedor debe existir en BD"
 
     rows = (
-        await db_session.execute(
-            select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+        (
+            await db_session.execute(
+                select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1, "Debe haber exactamente 1 adjudicacion"
     assert rows[0].rut_proveedor == rut
 
@@ -143,7 +147,7 @@ async def test_basico_un_item_crea_proveedor_y_adjudicacion(
 async def test_monto_acumulado_con_decimal_precision(
     db_session: AsyncSession,
 ) -> None:
-    """2 ítems del mismo proveedor: 2×1000.5 + 3×500.25 = 3501.75 (sin pérdida float)."""
+    """2 ítems del mismo proveedor: 2x1000.5 + 3x500.25 = 3501.75 (sin pérdida float)."""
     codigo = _codigo_lic()
     rut = _rut_prov()
 
@@ -158,15 +162,19 @@ async def test_monto_acumulado_con_decimal_precision(
     await db_session.commit()
 
     rows = (
-        await db_session.execute(
-            select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+        (
+            await db_session.execute(
+                select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1, "Un solo registro por proveedor"
 
     monto = rows[0].monto_adjudicado
     assert monto is not None
-    # 2×1000.5 + 3×500.25 = 2001.0 + 1500.75 = 3501.75
+    # 2x1000.5 + 3x500.25 = 2001.0 + 1500.75 = 3501.75
     expected = Decimal("3501.75")
     assert monto == expected, f"Monto esperado {expected}, obtenido {monto}"
 
@@ -196,10 +204,14 @@ async def test_multiples_proveedores_dos_adjudicaciones(
     await db_session.commit()
 
     rows = (
-        await db_session.execute(
-            select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+        (
+            await db_session.execute(
+                select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 2, "Debe haber exactamente 2 adjudicaciones"
 
     ruts_en_bd = {r.rut_proveedor for r in rows}
@@ -233,10 +245,14 @@ async def test_idempotencia_doble_llamada(
     await db_session.commit()
 
     rows = (
-        await db_session.execute(
-            select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+        (
+            await db_session.execute(
+                select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1, "Idempotente: debe haber exactamente 1 adjudicacion"
 
 
@@ -260,10 +276,14 @@ async def test_items_sin_adjudicacion_no_insertan(
     await db_session.commit()
 
     rows = (
-        await db_session.execute(
-            select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+        (
+            await db_session.execute(
+                select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 0, "Sin adjudicaciones → tabla debe estar vacía para esta lic"
 
 
@@ -287,10 +307,14 @@ async def test_rut_proveedor_none_se_ignora(
     await db_session.commit()
 
     rows = (
-        await db_session.execute(
-            select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+        (
+            await db_session.execute(
+                select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 0
 
 
@@ -316,10 +340,14 @@ async def test_monto_none_cuando_cantidad_es_none(
     await db_session.commit()
 
     rows = (
-        await db_session.execute(
-            select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+        (
+            await db_session.execute(
+                select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1
     assert rows[0].monto_adjudicado is None, "monto_adjudicado debe ser None"
 
@@ -345,10 +373,14 @@ async def test_monto_none_cuando_monto_unitario_es_none(
     await db_session.commit()
 
     rows = (
-        await db_session.execute(
-            select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+        (
+            await db_session.execute(
+                select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1
     assert rows[0].monto_adjudicado is None
 
@@ -390,9 +422,9 @@ async def test_proveedor_upsert_actualiza_razon_social(
     db_session.expire_all()
     prov_actualizado = await db_session.get(Proveedor, rut)
     assert prov_actualizado is not None
-    assert prov_actualizado.razon_social == "Nombre Nuevo Ltda", (
-        f"razon_social debe ser 'Nombre Nuevo Ltda', era '{prov_actualizado.razon_social}'"
-    )
+    assert (
+        prov_actualizado.razon_social == "Nombre Nuevo Ltda"
+    ), f"razon_social debe ser 'Nombre Nuevo Ltda', era '{prov_actualizado.razon_social}'"
 
 
 # ---------------------------------------------------------------------------
@@ -414,10 +446,14 @@ async def test_lista_vacia_no_inserta_ni_falla(
     await db_session.commit()
 
     rows = (
-        await db_session.execute(
-            select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+        (
+            await db_session.execute(
+                select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 0
 
 
@@ -447,10 +483,14 @@ async def test_fecha_adjudicacion_propagada_desde_fechas(
     await db_session.commit()
 
     rows = (
-        await db_session.execute(
-            select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+        (
+            await db_session.execute(
+                select(Adjudicacion).where(Adjudicacion.licitacion_codigo == codigo)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1
 
     adj_fecha = rows[0].fecha_adjudicacion

@@ -75,9 +75,7 @@ def _parsear_sincrono(contenido: bytes) -> ParsedPdf:
     # 1. Verificar MIME
     mime = magic.from_buffer(contenido, mime=True)
     if mime != _MIME_PDF:
-        raise PdfCorruptoError(
-            f"MIME incorrecto: esperado application/pdf, recibido {mime!r}"
-        )
+        raise PdfCorruptoError(f"MIME incorrecto: esperado application/pdf, recibido {mime!r}")
 
     # 2. Extraer con pymupdf
     paginas = _extraer_con_pymupdf(contenido)

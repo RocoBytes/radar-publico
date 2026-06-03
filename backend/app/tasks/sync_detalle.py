@@ -89,7 +89,7 @@ async def _sync_adjudicaciones(
 ) -> None:
     """Pobla adjudicaciones y proveedores desde los items del detalle.
 
-    Acumula el monto total por proveedor (Cantidad × MontoUnitario por ítem)
+    Acumula el monto total por proveedor (Cantidad x MontoUnitario por ítem)
     antes de insertar. Idempotente: borra las previas de esta licitación primero.
     """
     from decimal import Decimal
@@ -354,8 +354,8 @@ async def _run(
                 lic.es_renovable = bool(detalle.EsRenovable)
             # TipoConvocatoria: "1"=Pública, "2"=Privada
             if detalle.TipoConvocatoria:
-                _CONVOCATORIA = {"1": "Pública", "2": "Privada"}
-                lic.modalidad = _CONVOCATORIA.get(
+                _convocatoria = {"1": "Pública", "2": "Privada"}
+                lic.modalidad = _convocatoria.get(
                     str(detalle.TipoConvocatoria), str(detalle.TipoConvocatoria)
                 )
             if detalle.FonoResponsableContrato:
@@ -388,9 +388,7 @@ async def _run(
             # items puede cambiar entre sincronizaciones.
             if detalle.Items and detalle.Items.Listado:
                 await session.execute(
-                    delete(LicitacionItem).where(
-                        LicitacionItem.licitacion_codigo == codigo
-                    )
+                    delete(LicitacionItem).where(LicitacionItem.licitacion_codigo == codigo)
                 )
 
                 # Precalcular qué códigos UNSPSC existen en la tabla.
@@ -398,26 +396,18 @@ async def _run(
                 # reales usan 8 dígitos. Si el código no existe → None para
                 # evitar FK violation (el dato queda en nombre_producto igual).
                 codigos_en_items = {
-                    str(it.CodigoProducto)
-                    for it in detalle.Items.Listado
-                    if it.CodigoProducto
+                    str(it.CodigoProducto) for it in detalle.Items.Listado if it.CodigoProducto
                 }
                 codigos_validos: set[str] = set()
                 if codigos_en_items:
                     rows_unspsc = await session.execute(
-                        select(Unspsc.codigo).where(
-                            Unspsc.codigo.in_(codigos_en_items)
-                        )
+                        select(Unspsc.codigo).where(Unspsc.codigo.in_(codigos_en_items))
                     )
                     codigos_validos = {r[0] for r in rows_unspsc}
 
                 for item_api in detalle.Items.Listado:
                     numero = item_api.Correlativo or 0
-                    unspsc_raw = (
-                        str(item_api.CodigoProducto)
-                        if item_api.CodigoProducto
-                        else None
-                    )
+                    unspsc_raw = str(item_api.CodigoProducto) if item_api.CodigoProducto else None
                     unspsc = unspsc_raw if unspsc_raw in codigos_validos else None
                     session.add(
                         LicitacionItem(
@@ -464,14 +454,8 @@ async def _run(
 
             # Adjudicaciones — poblar cuando la licitación está adjudicada (código 8)
             # Ver CLAUDE.md §9 para el mapeo de códigos de estado.
-            if (
-                detalle.CodigoEstado == 8
-                and detalle.Items
-                and detalle.Items.Listado
-            ):
-                await _sync_adjudicaciones(
-                    session, codigo, detalle.Items.Listado, detalle.Fechas
-                )
+            if detalle.CodigoEstado == 8 and detalle.Items and detalle.Items.Listado:
+                await _sync_adjudicaciones(session, codigo, detalle.Items.Listado, detalle.Fechas)
 
             await session.commit()
 
@@ -609,7 +593,7 @@ async def _encolar_pendientes(limit: int) -> dict[str, int]:
 def sync_detalles_pendientes(self: Any, limit: int = 500) -> dict[str, int]:
     """Encola el detalle de licitaciones aún no sincronizadas.
 
-    Diseñada para correr en ventana nocturna (22:00–07:00 CLT).
+    Diseñada para correr en ventana nocturna (22:00-07:00 CLT).
     Encola hasta `limit` tareas por corrida — con el rate limit interno
     de 1 req/s en el worker, 500 tasks ≈ 8 minutos de proceso.
     Con 9 horas de ventana nocturna y corridas cada hora se pueden

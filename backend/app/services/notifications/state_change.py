@@ -12,10 +12,10 @@ Reglas de oro que aplican:
 from datetime import UTC, datetime
 import uuid
 
-import structlog
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+import structlog
 
 from app.models.enums import (
     LicitacionEstado,

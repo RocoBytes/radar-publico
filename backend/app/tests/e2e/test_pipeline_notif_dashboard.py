@@ -15,16 +15,13 @@ propio helper `_crear_licitacion` que construye la fila correctamente.
 from __future__ import annotations
 
 import asyncio
-import uuid
-from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+import uuid
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.models.enums import (
     LicitacionEstado,
@@ -38,10 +35,14 @@ from app.models.enums import (
 from app.models.licitacion import Licitacion
 from app.models.notificacion import Notificacion
 from app.models.organismo import Organismo
-from app.models.pipeline import PipelineItem, PipelineNota
-from app.models.preferencias import PreferenciasNotificaciones
-
+from app.models.pipeline import PipelineItem
 from app.tests.e2e.conftest import auth_headers
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 pytestmark = pytest.mark.e2e
 
@@ -156,9 +157,7 @@ async def proveedor_b(make_user: Callable[..., Any], db_session: AsyncSession) -
         with_empresa=True,
         razon_social="E2E Empresa B SpA",
     )
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == user.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == user.id))
     empresa = result.scalar_one()
     return {
         "usuario": user,
@@ -186,8 +185,6 @@ async def test_pipeline_cambio_estado_flujo_completo(
     """US-10.1: crear ítem → PATCH vista → PATCH interesado → estado correcto en BD."""
     lic = await _crear_licitacion(db_session)
     headers = proveedor_activo["headers"]
-    empresa_id: uuid.UUID = proveedor_activo["empresa"].id
-
     # Crear
     r = await client.post(
         "/api/v1/pipeline",
@@ -285,9 +282,9 @@ async def test_pipeline_item_solo_visible_para_su_empresa(
         headers=proveedor_b["headers"],
     )
     # Spec exige 404 para no revelar existencia; backend retorna 403 → xfail
-    assert r.status_code == 404, (
-        f"Se esperaba 404 (multi-tenancy), pero el backend retornó {r.status_code}"
-    )
+    assert (
+        r.status_code == 404
+    ), f"Se esperaba 404 (multi-tenancy), pero el backend retornó {r.status_code}"
 
 
 @pytest.mark.e2e
@@ -309,9 +306,9 @@ async def test_pipeline_empresa_b_no_ve_items_empresa_a(
 
     data = r.json()
     codigos = [it["licitacion"]["codigo"] for it in data["items"]]
-    assert lic.codigo not in codigos, (
-        "El pipeline de empresa B contiene un ítem que pertenece a empresa A"
-    )
+    assert (
+        lic.codigo not in codigos
+    ), "El pipeline de empresa B contiene un ítem que pertenece a empresa A"
 
 
 # ---------------------------------------------------------------------------
@@ -334,12 +331,8 @@ async def test_pipeline_filtro_estado_interesado(
     lic_3 = await _crear_licitacion(db_session)
 
     await _crear_item_en_db(db_session, empresa_id, lic_1.codigo, PipelineEstado.nueva)
-    await _crear_item_en_db(
-        db_session, empresa_id, lic_2.codigo, PipelineEstado.interesado
-    )
-    await _crear_item_en_db(
-        db_session, empresa_id, lic_3.codigo, PipelineEstado.postulando
-    )
+    await _crear_item_en_db(db_session, empresa_id, lic_2.codigo, PipelineEstado.interesado)
+    await _crear_item_en_db(db_session, empresa_id, lic_3.codigo, PipelineEstado.postulando)
 
     r = await client.get(
         "/api/v1/pipeline",
@@ -438,9 +431,9 @@ async def test_pipeline_item_ajeno_retorna_404_no_403(
         json={"estado": "vista"},
         headers=proveedor_b["headers"],
     )
-    assert r.status_code == 404, (
-        f"Se esperaba 404 (multi-tenancy), pero el backend retornó {r.status_code}"
-    )
+    assert (
+        r.status_code == 404
+    ), f"Se esperaba 404 (multi-tenancy), pero el backend retornó {r.status_code}"
 
 
 # ---------------------------------------------------------------------------
@@ -510,9 +503,10 @@ async def test_nota_ajena_retorna_403_o_404(
         f"/api/v1/pipeline/{item.id}/notas/{nota_id}",
         headers=headers_b,
     )
-    assert r_del.status_code in {403, 404}, (
-        f"Se esperaba 403 o 404, pero el backend retornó {r_del.status_code}"
-    )
+    assert r_del.status_code in {
+        403,
+        404,
+    }, f"Se esperaba 403 o 404, pero el backend retornó {r_del.status_code}"
 
 
 @pytest.mark.e2e
@@ -638,9 +632,9 @@ async def test_notificacion_ajena_no_se_puede_marcar(
             f"/api/v1/notificaciones/{notif.id}/leer",
             headers=proveedor_b["headers"],
         )
-        assert r.status_code == 404, (
-            f"Se esperaba 404 (multi-tenancy), pero el backend retornó {r.status_code}"
-        )
+        assert (
+            r.status_code == 404
+        ), f"Se esperaba 404 (multi-tenancy), pero el backend retornó {r.status_code}"
     finally:
         await db_session.delete(notif)
         await db_session.commit()
@@ -1005,11 +999,7 @@ async def test_pipeline_concurrencia_no_duplica(
     tasks = [_post() for _ in range(5)]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    statuses = [
-        r.status_code
-        for r in results
-        if not isinstance(r, Exception)
-    ]
+    statuses = [r.status_code for r in results if not isinstance(r, Exception)]
 
     created = [s for s in statuses if s == 201]
     conflicts = [s for s in statuses if s == 409]
@@ -1038,7 +1028,8 @@ async def test_pipeline_concurrencia_no_duplica(
         pytest.xfail(
             reason=(
                 f"BUG concurrencia: se esperaba 1x201 + 4x409, "
-                f"pero se obtuvo {len(created)}x201 + {len(conflicts)}x409 + {len(errors)} errores. "
+                f"pero se obtuvo {len(created)}x201 + {len(conflicts)}x409"
+                f" + {len(errors)} errores. "
                 f"Ítems en BD: {len(items_en_db)}. "
                 "El backend no tiene check atómico (SELECT+INSERT race condition)."
             )

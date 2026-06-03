@@ -67,9 +67,7 @@ def chunkear_documento(
         return []
 
     if max_tokens <= overlap:
-        raise ChunkingError(
-            f"max_tokens ({max_tokens}) debe ser mayor que overlap ({overlap})"
-        )
+        raise ChunkingError(f"max_tokens ({max_tokens}) debe ser mayor que overlap ({overlap})")
 
     enc = tiktoken.get_encoding(_ENCODING_NAME)
 
@@ -110,9 +108,7 @@ def chunkear_documento(
         overlap_paginas: list[int] = []
         overlap_tok = 0
         # Recorrer el buffer desde el final hasta alcanzar `overlap` tokens
-        for texto, pagina in zip(
-            reversed(buffer_textos), reversed(buffer_paginas), strict=False
-        ):
+        for texto, pagina in zip(reversed(buffer_textos), reversed(buffer_paginas), strict=False):
             tok = _contar_tokens(texto, enc)
             if overlap_tok + tok > overlap:
                 break

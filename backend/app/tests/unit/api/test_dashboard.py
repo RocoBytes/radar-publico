@@ -19,9 +19,9 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.security import create_access_token
+from app.models.catalogos import Unspsc
 from app.models.empresa import Empresa
 from app.models.enums import LicitacionEstado, UserRole, UserStatus
-from app.models.catalogos import Unspsc
 from app.models.interes import Interes, InteresTipo
 from app.models.licitacion import Licitacion, LicitacionItem
 from app.models.pipeline import PipelineItem, PipelineNota
@@ -53,9 +53,7 @@ async def limpiar_dashboard(db_session: AsyncSession) -> None:
     await db_session.execute(delete(PipelineNota))
     await db_session.execute(delete(PipelineItem))
     await db_session.execute(
-        delete(Licitacion).where(
-            Licitacion.codigo.in_([_CODIGO_LIC, _CODIGO_LIC_2])
-        )
+        delete(Licitacion).where(Licitacion.codigo.in_([_CODIGO_LIC, _CODIGO_LIC_2]))
     )
     await db_session.commit()
 
@@ -89,9 +87,7 @@ async def empresa_con_usuario(
         with_empresa=True,
         razon_social="Dashboard Test SpA",
     )
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == user.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == user.id))
     empresa: Empresa = result.scalar_one()
     return user, empresa
 
@@ -113,9 +109,7 @@ async def licitacion_publicada(db_session: AsyncSession) -> Licitacion:
         .on_conflict_do_nothing(index_elements=["codigo"])
     )
     await db_session.commit()
-    result = await db_session.execute(
-        select(Licitacion).where(Licitacion.codigo == _CODIGO_LIC)
-    )
+    result = await db_session.execute(select(Licitacion).where(Licitacion.codigo == _CODIGO_LIC))
     return result.scalar_one()
 
 

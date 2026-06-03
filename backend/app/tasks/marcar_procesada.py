@@ -41,9 +41,7 @@ async def _run(codigo: str) -> dict[str, int]:
         result = await session.execute(
             select(func.count()).where(
                 DocumentoBase.licitacion_codigo == codigo,
-                DocumentoBase.status.in_(
-                    [DocumentoStatus.pendiente, DocumentoStatus.descargado]
-                ),
+                DocumentoBase.status.in_([DocumentoStatus.pendiente, DocumentoStatus.descargado]),
             )
         )
         pendientes = result.scalar_one()

@@ -23,12 +23,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # === Base de datos ===
-    database_url: str = (
-        "postgresql+asyncpg://radar:radar_dev_password@localhost:5432/radar"
-    )
-    database_url_sync: str = (
-        "postgresql://radar:radar_dev_password@localhost:5432/radar"
-    )
+    database_url: str = "postgresql+asyncpg://radar:radar_dev_password@localhost:5432/radar"
+    database_url_sync: str = "postgresql://radar:radar_dev_password@localhost:5432/radar"
 
     # === Redis / Celery ===
     redis_url: str = "redis://localhost:6379/0"
@@ -51,8 +47,7 @@ class Settings(BaseSettings):
     # === CORS ===
     # Incluye puerto 3001 para el panel admin en desarrollo
     cors_origins: str = (
-        "http://localhost:3000,http://127.0.0.1:3000,"
-        "http://localhost:3001,http://127.0.0.1:3001"
+        "http://localhost:3000,http://127.0.0.1:3000," "http://localhost:3001,http://127.0.0.1:3001"
     )
 
     @field_validator("cors_origins", mode="before")
@@ -63,25 +58,22 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_security_config(self) -> "Settings":
         """Rechaza secretos débiles y CORS wildcard en producción."""
-        _KNOWN_WEAK = {
+        _known_weak = {
             "change_me_in_production",
             "change_me_32_bytes_long_min____",
         }
         if self.environment == "production":
-            if self.jwt_secret in _KNOWN_WEAK or len(self.jwt_secret.encode()) < 32:
+            if self.jwt_secret in _known_weak or len(self.jwt_secret.encode()) < 32:
                 raise ValueError(
-                    "JWT_SECRET inseguro para producción. "
-                    "Generá uno con: openssl rand -hex 32"
+                    "JWT_SECRET inseguro para producción. " "Generá uno con: openssl rand -hex 32"
                 )
-            if self.encryption_key in _KNOWN_WEAK:
+            if self.encryption_key in _known_weak:
                 raise ValueError(
                     "ENCRYPTION_KEY insegura para producción. "
                     "Generá una con: openssl rand -base64 24"
                 )
             if "*" in self.cors_origins:
-                raise ValueError(
-                    "CORS_ORIGINS no puede ser wildcard en producción"
-                )
+                raise ValueError("CORS_ORIGINS no puede ser wildcard en producción")
         return self
 
     @property

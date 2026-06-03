@@ -10,7 +10,7 @@ Tests:
 """
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 import uuid
 
 import pytest
@@ -54,6 +54,7 @@ def _make_checklist_item(nombre: str = "Doc 1") -> MagicMock:
     item.orden = 0
     item.completed_at = None
     from datetime import UTC, datetime
+
     now = datetime.now(UTC)
     item.created_at = now
     item.updated_at = now
@@ -185,7 +186,10 @@ class TestBootstrapFromAnalysis:
             else:
                 # Primer INSERT o lista final
                 query_str = str(query) if hasattr(query, "__str__") else ""
-                if "INSERT INTO" in query_str or (hasattr(query, "text") and "INSERT" in str(getattr(query, "text", ""))):
+                has_insert = "INSERT INTO" in query_str or (
+                    hasattr(query, "text") and "INSERT" in str(getattr(query, "text", ""))
+                )
+                if has_insert:
                     insert_count_1 += 1
                     r = MagicMock()
                     r.rowcount = 1  # inserción exitosa
@@ -214,7 +218,10 @@ class TestBootstrapFromAnalysis:
                 return _scalar_result(analisis)
             else:
                 query_str = str(query) if hasattr(query, "__str__") else ""
-                if "INSERT INTO" in query_str or (hasattr(query, "text") and "INSERT" in str(getattr(query, "text", ""))):
+                has_insert = "INSERT INTO" in query_str or (
+                    hasattr(query, "text") and "INSERT" in str(getattr(query, "text", ""))
+                )
+                if has_insert:
                     r = MagicMock()
                     r.rowcount = 0  # conflicto — DO NOTHING
                     return r

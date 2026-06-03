@@ -77,31 +77,21 @@ class Licitacion(Base):
     modalidad: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Monto
-    moneda: Mapped[str] = mapped_column(
-        String(10), nullable=False, server_default="CLP"
-    )
+    moneda: Mapped[str] = mapped_column(String(10), nullable=False, server_default="CLP")
     monto_estimado: Mapped[float | None] = mapped_column(Numeric(18, 2), nullable=True)
 
     # Contrato y renovabilidad
-    es_renovable: Mapped[bool] = mapped_column(
-        Boolean, nullable=True, server_default="false"
-    )
-    unidad_tiempo_contrato: Mapped[int | None] = mapped_column(
-        SmallInteger, nullable=True
-    )
+    es_renovable: Mapped[bool] = mapped_column(Boolean, nullable=True, server_default="false")
+    unidad_tiempo_contrato: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     tiempo_contrato: Mapped[int | None] = mapped_column(Integer, nullable=True)
     duracion_estimada_meses: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Fechas críticas (desnormalizadas aquí + normalizadas en licitacion_fechas)
-    fecha_creacion: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    fecha_creacion: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     fecha_publicacion: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    fecha_cierre: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    fecha_cierre: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     fecha_adjudicacion: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -143,9 +133,7 @@ class Licitacion(Base):
     )
 
     # Relaciones
-    organismo: Mapped["Organismo | None"] = relationship(
-        "Organismo", back_populates="licitaciones"
-    )
+    organismo: Mapped["Organismo | None"] = relationship("Organismo", back_populates="licitaciones")
     items: Mapped[list["LicitacionItem"]] = relationship(
         "LicitacionItem", back_populates="licitacion", cascade="all, delete-orphan"
     )
@@ -220,9 +208,7 @@ class LicitacionItem(Base):
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
     cantidad: Mapped[float | None] = mapped_column(Numeric(18, 4), nullable=True)
     unidad: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    monto_unitario_estimado: Mapped[float | None] = mapped_column(
-        Numeric(18, 2), nullable=True
-    )
+    monto_unitario_estimado: Mapped[float | None] = mapped_column(Numeric(18, 2), nullable=True)
     especificaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -230,9 +216,7 @@ class LicitacionItem(Base):
     )
 
     # Relaciones
-    licitacion: Mapped["Licitacion"] = relationship(
-        "Licitacion", back_populates="items"
-    )
+    licitacion: Mapped["Licitacion"] = relationship("Licitacion", back_populates="items")
 
     __table_args__ = (
         UniqueConstraint("licitacion_codigo", "numero_item"),
@@ -241,10 +225,7 @@ class LicitacionItem(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<LicitacionItem licitacion={self.licitacion_codigo!r} "
-            f"item={self.numero_item}>"
-        )
+        return f"<LicitacionItem licitacion={self.licitacion_codigo!r} " f"item={self.numero_item}>"
 
 
 class CriterioEvaluacion(Base):
@@ -273,9 +254,7 @@ class CriterioEvaluacion(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    licitacion: Mapped["Licitacion"] = relationship(
-        "Licitacion", back_populates="criterios"
-    )
+    licitacion: Mapped["Licitacion"] = relationship("Licitacion", back_populates="criterios")
 
     __table_args__ = (Index("idx_criterios_licitacion", "licitacion_codigo"),)
 
@@ -305,14 +284,10 @@ class LicitacionFecha(Base):
         Enum(FechaTipo, name="fecha_tipo", create_type=False), nullable=False
     )
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    es_estimada: Mapped[bool] = mapped_column(
-        Boolean, nullable=True, server_default="false"
-    )
+    es_estimada: Mapped[bool] = mapped_column(Boolean, nullable=True, server_default="false")
     notas: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    licitacion: Mapped["Licitacion"] = relationship(
-        "Licitacion", back_populates="fechas"
-    )
+    licitacion: Mapped["Licitacion"] = relationship("Licitacion", back_populates="fechas")
 
     __table_args__ = (
         UniqueConstraint("licitacion_codigo", "tipo"),

@@ -223,9 +223,7 @@ async def test_sync_detalle_licitacion_nueva(ticket_activo: dict[str, str]) -> N
                 select(func.count()).where(LicitacionFecha.licitacion_codigo == codigo)
             )
         ).scalar()
-        assert (
-            fechas_count or 0
-        ) >= 2, f"Esperadas al menos 2 fechas, encontradas {fechas_count}"
+        assert (fechas_count or 0) >= 2, f"Esperadas al menos 2 fechas, encontradas {fechas_count}"
 
     # Cleanup del item de test
     async with AsyncSessionLocal() as session:
@@ -374,9 +372,7 @@ async def test_sync_listado_encola_detalle() -> None:
     )
 
     mock_client = AsyncMock()
-    mock_client.listar_licitaciones_por_estado = AsyncMock(
-        return_value=listado_response
-    )
+    mock_client.listar_licitaciones_por_estado = AsyncMock(return_value=listado_response)
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
@@ -457,14 +453,10 @@ async def test_sync_detalle_crea_organismo(ticket_activo: dict[str, str]) -> Non
     # Verificar que el organismo fue creado en la BD
     async with AsyncSessionLocal() as session:
         organismo = (
-            await session.execute(
-                select(Organismo).where(Organismo.codigo_organismo == codigo_org)
-            )
+            await session.execute(select(Organismo).where(Organismo.codigo_organismo == codigo_org))
         ).scalar_one_or_none()
 
-        assert (
-            organismo is not None
-        ), f"El organismo {codigo_org} debería existir en organismos"
+        assert organismo is not None, f"El organismo {codigo_org} debería existir en organismos"
         assert organismo.nombre == f"Municipalidad Test {codigo_org}"
         assert organismo.rut == "69.123.456-7"
         assert organismo.region == "Región Metropolitana de Santiago"
@@ -485,9 +477,7 @@ async def test_sync_detalle_crea_organismo(ticket_activo: dict[str, str]) -> Non
 
     async with AsyncSessionLocal() as session:
         org_cleanup = (
-            await session.execute(
-                select(Organismo).where(Organismo.codigo_organismo == codigo_org)
-            )
+            await session.execute(select(Organismo).where(Organismo.codigo_organismo == codigo_org))
         ).scalar_one_or_none()
         if org_cleanup:
             await session.delete(org_cleanup)

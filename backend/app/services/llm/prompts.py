@@ -33,7 +33,8 @@ class Prompt:
 ANALISIS_BASES = Prompt(
     nombre="analisis_bases",
     version=1,
-    template="""Sos un experto en licitaciones públicas chilenas de Mercado Público con más de 10 años de experiencia evaluando bases técnicas.
+    template="""Sos un experto en licitaciones públicas chilenas de Mercado Público
+con más de 10 años de experiencia evaluando bases técnicas.
 
 Analizá el contenido de las bases de la siguiente licitación e identificá con precisión:
 
@@ -82,7 +83,8 @@ Respondé ÚNICAMENTE con un objeto JSON válido. Sin texto previo ni posterior 
   "restricciones": [
     "descripción de cada restricción o condición que descalifica automáticamente"
   ],
-  "resumen_ejecutivo": "párrafo de 3-5 oraciones con los puntos más críticos para decidir si postular"
+  "resumen_ejecutivo": "párrafo de 3-5 oraciones con los puntos más críticos
+    para decidir si postular"
 }""",
 )
 

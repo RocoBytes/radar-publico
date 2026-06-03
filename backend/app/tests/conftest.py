@@ -126,9 +126,7 @@ async def make_user() -> AsyncGenerator[Callable[..., Any], None]:
         rut_final = rut or f"76.{abs(hash(email)) % 999_999:06d}-K"
         async with _TestSessionLocal() as session:
             # Idempotente: limpia usuario previo con este email
-            existing_result = await session.execute(
-                select(Usuario).where(Usuario.email == email)
-            )
+            existing_result = await session.execute(select(Usuario).where(Usuario.email == email))
             existing = existing_result.scalar_one_or_none()
             if existing is not None:
                 await session.delete(existing)
@@ -163,9 +161,7 @@ async def make_user() -> AsyncGenerator[Callable[..., Any], None]:
     # Teardown
     async with _TestSessionLocal() as session:
         for email in emails_creados:
-            result = await session.execute(
-                select(Usuario).where(Usuario.email == email)
-            )
+            result = await session.execute(select(Usuario).where(Usuario.email == email))
             user = result.scalar_one_or_none()
             if user is not None:
                 await session.delete(user)

@@ -75,9 +75,7 @@ async def empresa_prueba() -> AsyncGenerator[dict[str, str], None]:
 
     # Cleanup
     async with _db_session.AsyncSessionLocal() as session:
-        usuario_cleanup: Usuario | None = await session.get(
-            Usuario, uuid.UUID(ids["usuario_id"])
-        )
+        usuario_cleanup: Usuario | None = await session.get(Usuario, uuid.UUID(ids["usuario_id"]))
         if usuario_cleanup is not None:
             await session.delete(usuario_cleanup)
             await session.commit()
@@ -166,9 +164,7 @@ async def test_sync_idempotente(empresa_prueba: dict[str, str]) -> None:
 
     # Contar tras primera sync
     async with _db_session.AsyncSessionLocal() as session:
-        count_primera = (
-            await session.execute(select(text("count(*) FROM licitaciones")))
-        ).scalar()
+        count_primera = (await session.execute(select(text("count(*) FROM licitaciones")))).scalar()
 
     # Segunda sync — mismos datos, no debe duplicar
     async with MercadoPublicoClient() as client:
@@ -197,9 +193,7 @@ async def test_sync_idempotente(empresa_prueba: dict[str, str]) -> None:
 
     # Verificar que el count no aumentó (idempotencia)
     async with _db_session.AsyncSessionLocal() as session:
-        count_segunda = (
-            await session.execute(select(text("count(*) FROM licitaciones")))
-        ).scalar()
+        count_segunda = (await session.execute(select(text("count(*) FROM licitaciones")))).scalar()
 
     assert (
         count_segunda == count_primera
@@ -227,9 +221,7 @@ async def test_api_quota_log_se_persiste(empresa_prueba: dict[str, str]) -> None
     # Contar logs antes
     async with _db_session.AsyncSessionLocal() as session:
         count_antes_raw = (
-            await session.execute(
-                select(func.count()).where(ApiQuotaLog.ticket_id == ticket_id)
-            )
+            await session.execute(select(func.count()).where(ApiQuotaLog.ticket_id == ticket_id))
         ).scalar()
     count_antes = count_antes_raw or 0
 
@@ -246,9 +238,7 @@ async def test_api_quota_log_se_persiste(empresa_prueba: dict[str, str]) -> None
     # Debe haber al menos 1 log nuevo
     async with _db_session.AsyncSessionLocal() as session:
         count_despues_raw = (
-            await session.execute(
-                select(func.count()).where(ApiQuotaLog.ticket_id == ticket_id)
-            )
+            await session.execute(select(func.count()).where(ApiQuotaLog.ticket_id == ticket_id))
         ).scalar()
     count_despues = count_despues_raw or 0
 

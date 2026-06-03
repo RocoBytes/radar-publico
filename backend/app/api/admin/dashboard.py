@@ -58,9 +58,7 @@ async def obtener_kpis(
     # Mensajes de IA generados hoy (UTC)
     mensajes_ia_hoy: int = (
         await db.execute(
-            select(func.count(LlmUsageLog.id)).where(
-                LlmUsageLog.created_at >= today_start
-            )
+            select(func.count(LlmUsageLog.id)).where(LlmUsageLog.created_at >= today_start)
         )
     ).scalar_one()
 
@@ -101,12 +99,8 @@ async def obtener_costos_ia(
             Empresa.id.label("empresa_id"),
             Empresa.razon_social,
             func.count(LlmUsageLog.id).label("mensajes_mes"),
-            func.coalesce(func.sum(LlmUsageLog.tokens_input), 0).label(
-                "tokens_input_mes"
-            ),
-            func.coalesce(func.sum(LlmUsageLog.tokens_output), 0).label(
-                "tokens_output_mes"
-            ),
+            func.coalesce(func.sum(LlmUsageLog.tokens_input), 0).label("tokens_input_mes"),
+            func.coalesce(func.sum(LlmUsageLog.tokens_output), 0).label("tokens_output_mes"),
             func.coalesce(func.sum(LlmUsageLog.costo_estimado), 0).label("costo_mes"),
         )
         .join(LlmUsageLog, LlmUsageLog.empresa_id == Empresa.id)

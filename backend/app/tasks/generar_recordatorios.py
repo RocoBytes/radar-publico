@@ -20,7 +20,7 @@ logger = structlog.get_logger()
 
 _VENTANA_24H_MIN = 22  # horas mínimas para considerar ventana de 24h
 _VENTANA_24H_MAX = 26  # horas máximas para considerar ventana de 24h
-_DEDUP_HORAS = 20      # ventana de dedup: no crear si ya hay una en las últimas N horas
+_DEDUP_HORAS = 20  # ventana de dedup: no crear si ya hay una en las últimas N horas
 
 
 async def _generar_recordatorios() -> dict[str, int]:
@@ -66,9 +66,7 @@ async def _generar_recordatorios() -> dict[str, int]:
         if licitacion.fecha_cierre is None:
             continue
 
-        horas_restantes = (
-            licitacion.fecha_cierre - now
-        ).total_seconds() / 3600
+        horas_restantes = (licitacion.fecha_cierre - now).total_seconds() / 3600
 
         # Solo ventana de 24h en v1
         if not (_VENTANA_24H_MIN <= horas_restantes <= _VENTANA_24H_MAX):

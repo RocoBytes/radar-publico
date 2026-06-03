@@ -9,12 +9,14 @@ El ticket nunca se loggea ni se persiste en claro (regla de oro #2).
 import asyncio
 import os
 import sys
+from typing import TYPE_CHECKING
 import uuid
-
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import AsyncSessionLocal
 from app.services.admin.service import AdminService
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def main() -> None:
@@ -25,7 +27,7 @@ async def main() -> None:
 
     # IDs fijos del entorno de desarrollo seed
     usuario_id = uuid.UUID("104eecf7-3e59-4062-b75d-0674231b750e")  # demo@radarpublico.cl
-    admin_id   = uuid.UUID("10fce1ce-ea33-41c6-b8a2-af54bdeffd01")  # admin@radarpublico.cl
+    admin_id = uuid.UUID("10fce1ce-ea33-41c6-b8a2-af54bdeffd01")  # admin@radarpublico.cl
 
     async with AsyncSessionLocal() as session:
         session: AsyncSession
@@ -37,7 +39,9 @@ async def main() -> None:
         )
         await session.commit()
 
-    print(f"Ticket cargado. Últimos 4: ...{ticket_obj.ticket_ultimos_4}  status: {ticket_obj.status}")
+    print(
+        f"Ticket cargado. Últimos 4: ...{ticket_obj.ticket_ultimos_4}  status: {ticket_obj.status}"
+    )
 
 
 if __name__ == "__main__":

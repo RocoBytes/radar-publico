@@ -61,19 +61,13 @@ class OrdenesCompra(Base):
     nombre: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    moneda: Mapped[str | None] = mapped_column(
-        String(10), nullable=True, server_default="'CLP'"
-    )
+    moneda: Mapped[str | None] = mapped_column(String(10), nullable=True, server_default="'CLP'")
 
     total_neto: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
-    total_impuestos: Mapped[Decimal | None] = mapped_column(
-        Numeric(18, 2), nullable=True
-    )
+    total_impuestos: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
     total: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
 
-    fecha_envio: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    fecha_envio: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     fecha_aceptacion: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -95,7 +89,4 @@ class OrdenesCompra(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<OrdenesCompra codigo={self.codigo!r} estado={self.estado}"
-            f" total={self.total}>"
-        )
+        return f"<OrdenesCompra codigo={self.codigo!r} estado={self.estado}" f" total={self.total}>"

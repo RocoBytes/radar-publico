@@ -9,10 +9,10 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, time
 from typing import Any
 
-import structlog
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import Select, exists, func, select
 from sqlalchemy.orm import joinedload, selectinload
+import structlog
 
 from app.api.deps import CurrentUser, DbDep  # noqa: TCH001
 from app.models.enums import LicitacionEstado  # noqa: TCH001
@@ -53,9 +53,7 @@ def _apply_filters(
 ) -> Select[Any]:
     """Aplica filtros condicionales a la query de licitaciones."""
     if q:
-        stmt = stmt.where(
-            Licitacion.search_vector.op("@@")(func.plainto_tsquery("spanish", q))
-        )
+        stmt = stmt.where(Licitacion.search_vector.op("@@")(func.plainto_tsquery("spanish", q)))
     if estado is not None:
         stmt = stmt.where(Licitacion.estado == estado)
     if tipo is not None:
@@ -65,13 +63,9 @@ def _apply_filters(
         # directamente en la licitación (join ya aplicado).
         stmt = stmt.where(Licitacion.codigo_organismo == region_codigo)
     if fecha_cierre_desde is not None:
-        stmt = stmt.where(
-            Licitacion.fecha_cierre >= _date_to_utc_start(fecha_cierre_desde)
-        )
+        stmt = stmt.where(Licitacion.fecha_cierre >= _date_to_utc_start(fecha_cierre_desde))
     if fecha_cierre_hasta is not None:
-        stmt = stmt.where(
-            Licitacion.fecha_cierre <= _date_to_utc_end(fecha_cierre_hasta)
-        )
+        stmt = stmt.where(Licitacion.fecha_cierre <= _date_to_utc_end(fecha_cierre_hasta))
     if monto_min is not None:
         stmt = stmt.where(Licitacion.monto_estimado >= monto_min)
     if monto_max is not None:
@@ -112,10 +106,7 @@ async def listar_licitaciones(
         default=None,
         min_length=2,
         max_length=8,
-        description=(
-            "Código UNSPSC (2-8 dígitos). "
-            "Filtra licitaciones con ítems en ese rubro."
-        ),
+        description=("Código UNSPSC (2-8 dígitos). " "Filtra licitaciones con ítems en ese rubro."),
     ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
@@ -196,9 +187,7 @@ async def obtener_licitacion(
             selectinload(Licitacion.criterios),
         )
     )
-    licitacion: Licitacion | None = (
-        (await db.execute(stmt)).unique().scalar_one_or_none()
-    )
+    licitacion: Licitacion | None = (await db.execute(stmt)).unique().scalar_one_or_none()
 
     if licitacion is None:
         raise HTTPException(
@@ -212,6 +201,7 @@ async def obtener_licitacion(
     if licitacion.detalle_sincronizado_at is None:
         try:
             from app.tasks.sync_detalle import _run as _sync_detalle
+
             await _sync_detalle(codigo, skip_engine_dispose=True)
             # Expirar la sesión para que la re-query traiga datos frescos
             db.expire_all()

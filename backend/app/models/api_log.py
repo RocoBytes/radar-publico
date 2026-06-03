@@ -67,6 +67,5 @@ class ApiQuotaLog(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<ApiQuotaLog id={self.id} endpoint={self.endpoint!r} "
-            f"status={self.status_code}>"
+            f"<ApiQuotaLog id={self.id} endpoint={self.endpoint!r} " f"status={self.status_code}>"
         )

@@ -74,9 +74,7 @@ async def _create(
             sys.exit(1)
 
         if rol == UserRole.proveedor and rut:
-            existing_rut = await session.execute(
-                select(Empresa).where(Empresa.rut == rut)
-            )
+            existing_rut = await session.execute(select(Empresa).where(Empresa.rut == rut))
             if existing_rut.scalar_one_or_none():
                 print(f"ERROR: El RUT {rut!r} ya está registrado.", file=sys.stderr)
                 sys.exit(1)

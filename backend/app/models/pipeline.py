@@ -82,9 +82,7 @@ class PipelineItem(Base):
     score_justificacion: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
 
     razon_descarte: Mapped[str | None] = mapped_column(Text, nullable=True)
-    monto_postulado: Mapped[Decimal | None] = mapped_column(
-        Numeric(18, 2), nullable=True
-    )
+    monto_postulado: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
     resultado_observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     detected_by_radar_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -100,12 +98,8 @@ class PipelineItem(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    empresa: Mapped["Empresa"] = relationship(
-        "Empresa", back_populates="pipeline_items"
-    )
-    licitacion: Mapped["Licitacion"] = relationship(
-        "Licitacion", back_populates="pipeline_items"
-    )
+    empresa: Mapped["Empresa"] = relationship("Empresa", back_populates="pipeline_items")
+    licitacion: Mapped["Licitacion"] = relationship("Licitacion", back_populates="pipeline_items")
     radar: Mapped["Radar | None"] = relationship(
         "Radar",
         back_populates="pipeline_items",
@@ -190,9 +184,7 @@ class PipelineNota(Base):
 
     item: Mapped["PipelineItem"] = relationship("PipelineItem", back_populates="notas")
 
-    __table_args__ = (
-        Index("idx_notas_item", "pipeline_item_id", text("created_at DESC")),
-    )
+    __table_args__ = (Index("idx_notas_item", "pipeline_item_id", text("created_at DESC")),)
 
     def __repr__(self) -> str:
         return f"<PipelineNota id={self.id} item_id={self.pipeline_item_id}>"
@@ -265,14 +257,11 @@ class PipelineChecklistItem(Base):
         back_populates="checklist_items",
     )
 
-    __table_args__ = (
-        Index("idx_checklist_pipeline_item", "pipeline_item_id"),
-    )
+    __table_args__ = (Index("idx_checklist_pipeline_item", "pipeline_item_id"),)
 
     def __repr__(self) -> str:
         return (
-            f"<PipelineChecklistItem id={self.id}"
-            f" nombre={self.nombre!r} estado={self.estado}>"
+            f"<PipelineChecklistItem id={self.id}" f" nombre={self.nombre!r} estado={self.estado}>"
         )
 
 
@@ -306,13 +295,9 @@ class PipelineArchivo(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    item: Mapped["PipelineItem"] = relationship(
-        "PipelineItem", back_populates="archivos"
-    )
+    item: Mapped["PipelineItem"] = relationship("PipelineItem", back_populates="archivos")
 
-    __table_args__ = (
-        Index("idx_archivos_pipeline_item", "pipeline_item_id"),
-    )
+    __table_args__ = (Index("idx_archivos_pipeline_item", "pipeline_item_id"),)
 
     def __repr__(self) -> str:
         return (

@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.session import AsyncSessionLocal
-from app.models.enums import LicitacionEstado, UserRole, UserStatus
+from app.models.enums import LicitacionEstado
 from app.models.licitacion import Licitacion
 from app.models.pipeline import PipelineChecklistItem, PipelineItem
 
@@ -33,9 +33,7 @@ UserFactory = Callable[..., Any]
 _CODIGO_LIC = f"TEST-CL-{uuid.uuid4().hex[:6].upper()}"
 
 
-async def _get_auth_header(
-    client: AsyncClient, email: str, password: str
-) -> dict[str, str]:
+async def _get_auth_header(client: AsyncClient, email: str, password: str) -> dict[str, str]:
     resp = await client.post(
         "/api/v1/auth/login",
         json={"email": email, "password": password},
@@ -60,9 +58,7 @@ async def licitacion_prueba() -> AsyncGenerator[str, None]:
     yield _CODIGO_LIC
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(Licitacion).where(Licitacion.codigo == _CODIGO_LIC)
-        )
+        result = await session.execute(select(Licitacion).where(Licitacion.codigo == _CODIGO_LIC))
         lic_obj = result.scalar_one_or_none()
         if lic_obj is not None:
             await session.delete(lic_obj)
@@ -84,9 +80,8 @@ async def pipeline_item_de_usuario(
 
     # Obtener empresa creada por make_user
     from app.models.empresa import Empresa
-    emp_result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == user.id)
-    )
+
+    emp_result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == user.id))
     empresa = emp_result.scalar_one()
 
     item = PipelineItem(
@@ -213,9 +208,10 @@ async def test_acceso_no_autorizado_checklist(
             f"/api/v1/pipeline/{pipeline_item_id_a}/checklist",
             headers=headers_b,
         )
-        assert resp.status_code in (403, 404), (
-            f"Esperado 403 o 404, obtenido {resp.status_code}: {resp.text}"
-        )
+        assert resp.status_code in (
+            403,
+            404,
+        ), f"Esperado 403 o 404, obtenido {resp.status_code}: {resp.text}"
 
         # B intenta POST en checklist de A → 403 o 404
         resp = await client.post(
@@ -257,9 +253,7 @@ async def test_cascade_delete_pipeline_item(
         # Verificar que el ítem existe en la BD
         async with AsyncSessionLocal() as session:
             checklist_result = await session.execute(
-                select(PipelineChecklistItem).where(
-                    PipelineChecklistItem.id == uuid.UUID(item_id)
-                )
+                select(PipelineChecklistItem).where(PipelineChecklistItem.id == uuid.UUID(item_id))
             )
             assert checklist_result.scalar_one_or_none() is not None
 
@@ -273,13 +267,11 @@ async def test_cascade_delete_pipeline_item(
         # Verificar que el checklist_item ya no existe (CASCADE funcionó)
         async with AsyncSessionLocal() as session:
             checklist_result = await session.execute(
-                select(PipelineChecklistItem).where(
-                    PipelineChecklistItem.id == uuid.UUID(item_id)
-                )
+                select(PipelineChecklistItem).where(PipelineChecklistItem.id == uuid.UUID(item_id))
             )
-            assert checklist_result.scalar_one_or_none() is None, (
-                "El checklist_item debería haberse eliminado en cascada con el pipeline_item"
-            )
+            assert (
+                checklist_result.scalar_one_or_none() is None
+            ), "El checklist_item debería haberse eliminado en cascada con el pipeline_item"
 
         # Marcar el pipeline_item como ya limpiado para evitar doble-delete en teardown
         pip["pipeline_item"]._already_deleted = True  # type: ignore[attr-defined]

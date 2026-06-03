@@ -24,8 +24,8 @@ Reglas de oro que aplican:
 """
 
 import asyncio
-import json
 from datetime import UTC, datetime
+import json
 from typing import Any
 
 import structlog
@@ -88,9 +88,7 @@ async def _run(codigo: str) -> dict[str, Any]:
             return stats
 
         organismo: Organismo | None = (
-            await session.get(Organismo, lic.codigo_organismo)
-            if lic.codigo_organismo
-            else None
+            await session.get(Organismo, lic.codigo_organismo) if lic.codigo_organismo else None
         )
 
         criterios_result = await session.execute(

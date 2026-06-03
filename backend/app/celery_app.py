@@ -75,11 +75,11 @@ celery_app.conf.beat_schedule = {
         "schedule": 86400.0,  # una vez al día
         "options": {"expires": 85000},
     },
-    # Ventana nocturna CLT (22:00–07:00 = 01:00–10:00 UTC).
+    # Ventana nocturna CLT (22:00-07:00 = 01:00-10:00 UTC).
     # Encola 500 detalles por hora → hasta 4.500 en 9 horas sin tocar cuota diurna.
     "sync-detalles-pendientes-noche": {
         "task": "tasks.sync_detalle.sync_detalles_pendientes",
-        "schedule": crontab(minute=0, hour="1-9"),  # 01:00–09:00 UTC cada hora
+        "schedule": crontab(minute=0, hour="1-9"),  # 01:00-09:00 UTC cada hora
         "kwargs": {"limit": 500},
         "options": {"expires": 3500},
     },

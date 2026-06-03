@@ -60,9 +60,7 @@ class TicketApi(Base):
         ForeignKey("usuarios.id", ondelete="SET NULL"),
         nullable=True,
     )
-    cargado_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    cargado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Estado de salud del ticket
     ultima_validacion_at: Mapped[datetime | None] = mapped_column(

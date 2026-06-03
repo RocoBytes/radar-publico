@@ -25,9 +25,7 @@ class CrearCuentaRequest(BaseModel):
     @classmethod
     def validar_rut(cls, v: str) -> str:
         if not _RUT_RE.match(v):
-            raise ValueError(
-                "RUT debe tener formato XX.XXX.XXX-Y (ej: 76.123.456-7)"
-            )
+            raise ValueError("RUT debe tener formato XX.XXX.XXX-Y (ej: 76.123.456-7)")
         return v
 
 

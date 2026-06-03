@@ -132,7 +132,7 @@ class TestCrearCuenta:
         """Lanza CuentaYaExisteError(campo='rut') si el RUT ya existe."""
         session = _make_session()
         session.execute.side_effect = [
-            _scalar_result(None),           # email no existe
+            _scalar_result(None),  # email no existe
             _scalar_result(_make_empresa()),  # rut ya existe
         ]
 

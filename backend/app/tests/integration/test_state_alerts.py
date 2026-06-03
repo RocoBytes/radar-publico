@@ -13,7 +13,6 @@ Cubre:
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING
 import uuid
 
@@ -36,6 +35,8 @@ from app.models.pipeline import PipelineItem
 from app.models.usuario import Usuario
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     pass
 
 
@@ -133,9 +134,9 @@ async def setup_multi_empresa(  # type: ignore[misc]
             u = await session.get(Usuario, uid)
             if u is not None:
                 await session.delete(u)
-        l = await session.get(Licitacion, codigo_lic)
-        if l is not None:
-            await session.delete(l)
+        lic = await session.get(Licitacion, codigo_lic)
+        if lic is not None:
+            await session.delete(lic)
         await session.commit()
 
 
@@ -170,12 +171,16 @@ async def test_notificacion_emitida_por_empresa(
     # Verificar que las notificaciones existen en BD con el tipo correcto
     async with AsyncSessionLocal() as session:
         rows = (
-            await session.execute(
-                select(Notificacion)
-                .where(Notificacion.licitacion_codigo == codigo_lic)
-                .where(Notificacion.tipo == NotifTipo.cambio_estado_externo)
+            (
+                await session.execute(
+                    select(Notificacion)
+                    .where(Notificacion.licitacion_codigo == codigo_lic)
+                    .where(Notificacion.tipo == NotifTipo.cambio_estado_externo)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
     assert len(rows) == n
     # Verificar que las empresas notificadas son exactamente las del fixture
@@ -224,12 +229,14 @@ async def test_campo_ultimo_estado_actualizado(
     # Verificar que todos los pipeline_items tienen ultimo_estado_licitacion = cerrada
     async with AsyncSessionLocal() as session:
         items = (
-            await session.execute(
-                select(PipelineItem).where(
-                    PipelineItem.licitacion_codigo == codigo_lic
+            (
+                await session.execute(
+                    select(PipelineItem).where(PipelineItem.licitacion_codigo == codigo_lic)
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
     assert len(items) == len(empresa_ids)
     for item in items:

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 import uuid
 
 import pytest
@@ -34,7 +34,7 @@ _FAKE_PDF = b"%PDF-1.4 contenido falso"
 _FAKE_STORAGE_PATH = "bases/TEST/doc.pdf"
 
 
-def _make_parsed_pdf(num_paginas: int = 2) -> "ParsedPdf":
+def _make_parsed_pdf(num_paginas: int = 2) -> ParsedPdf:
     from app.services.pdf.parser import ParsedPdf
 
     return ParsedPdf(
@@ -44,7 +44,7 @@ def _make_parsed_pdf(num_paginas: int = 2) -> "ParsedPdf":
     )
 
 
-def _make_chunks(n: int = 2) -> "list[Chunk]":
+def _make_chunks(n: int = 2) -> list[Chunk]:
     from app.services.pdf.chunker import Chunk
 
     return [
@@ -221,9 +221,7 @@ async def test_procesar_pdf_ok(documento_descargado: dict[str, str]) -> None:
 
         count = (
             await session.execute(
-                select(func.count()).where(
-                    DocumentoChunk.documento_id == uuid.UUID(doc_id)
-                )
+                select(func.count()).where(DocumentoChunk.documento_id == uuid.UUID(doc_id))
             )
         ).scalar()
         assert count == 3, f"Esperados 3 chunks, got {count}"

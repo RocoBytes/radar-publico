@@ -24,8 +24,8 @@ from app.models.plan_anual import PlanAnualLinea
 from app.schemas.futuro import (
     PlanAnualLineaResponse,
     PlanAnualListResponse,
-    RenovacionResponse,
     RenovacionesListResponse,
+    RenovacionResponse,
 )
 
 router = APIRouter(prefix="/futuro", tags=["futuro"])
@@ -87,9 +87,7 @@ async def listar_renovaciones(
 
     # 3. Filtrar por UNSPSC si la empresa tiene intereses configurados
     if codigos_interes:
-        item_conditions = [
-            LicitacionItem.unspsc_codigo.like(f"{c}%") for c in codigos_interes
-        ]
+        item_conditions = [LicitacionItem.unspsc_codigo.like(f"{c}%") for c in codigos_interes]
         base_q = base_q.where(
             exists(
                 select(LicitacionItem.id).where(
@@ -106,9 +104,7 @@ async def listar_renovaciones(
     # 5. Resultado paginado, ordenado por fecha de término ASC (nulls last)
     rows = (
         await db.execute(
-            base_q.order_by(
-                Licitacion.fecha_estimada_termino_contrato.asc().nulls_last()
-            )
+            base_q.order_by(Licitacion.fecha_estimada_termino_contrato.asc().nulls_last())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
@@ -155,7 +151,9 @@ async def listar_plan_anual(
     empresa: EmpresaDep,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
-    ano: int | None = Query(default=None, ge=2020, le=2035, description="Año del plan. None = año actual."),
+    ano: int | None = Query(
+        default=None, ge=2020, le=2035, description="Año del plan. None = año actual."
+    ),
     q: str | None = Query(default=None, max_length=200),
 ) -> PlanAnualListResponse:
     """Líneas del plan anual de compras filtradas por intereses UNSPSC de la empresa."""
@@ -183,12 +181,16 @@ async def listar_plan_anual(
     total: int = (await db.execute(count_q)).scalar_one()
 
     rows = (
-        await db.execute(
-            base_q.order_by(PlanAnualLinea.monto_estimado.desc().nulls_last())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+        (
+            await db.execute(
+                base_q.order_by(PlanAnualLinea.monto_estimado.desc().nulls_last())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     items = [
         PlanAnualLineaResponse(

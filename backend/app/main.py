@@ -36,6 +36,7 @@ app = FastAPI(
     redoc_url="/redoc" if not settings.is_production else None,
 )
 
+
 @app.middleware("http")
 async def security_headers_middleware(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]

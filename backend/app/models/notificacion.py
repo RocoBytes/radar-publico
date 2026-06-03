@@ -77,13 +77,9 @@ class Notificacion(Base):
         server_default=text("now()"),
     )
 
-    enviada_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    enviada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    leida_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    leida_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     error_mensaje: Mapped[str | None] = mapped_column(Text, nullable=True)
 

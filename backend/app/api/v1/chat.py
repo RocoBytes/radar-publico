@@ -129,9 +129,7 @@ async def _generar_respuesta(
     try:
         # 1. Buscar chunks similares al query del usuario
         async with AsyncSessionLocal() as db_search:
-            chunks = await buscar_chunks_similares(
-                db_search, licitacion_codigo, mensaje_usuario
-            )
+            chunks = await buscar_chunks_similares(db_search, licitacion_codigo, mensaje_usuario)
 
         # 2. Construir system prompt según disponibilidad de bases
         if chunks:
@@ -197,7 +195,13 @@ async def _generar_respuesta(
 
     except Exception as exc:
         log.error("chat_streaming_error", error=str(exc))
-        yield f"data: {json.dumps({'tipo': 'error', 'detail': 'Error interno al procesar la consulta'})}\n\n"
+        error_payload = json.dumps(
+            {
+                "tipo": "error",
+                "detail": "Error interno al procesar la consulta",
+            }
+        )
+        yield f"data: {error_payload}\n\n"
 
 
 # ---------------------------------------------------------------------------
@@ -223,9 +227,7 @@ async def obtener_conversacion(
     """
     # Verificar que la licitación existe
     licitacion = (
-        await db.execute(
-            select(Licitacion).where(Licitacion.codigo == licitacion_codigo)
-        )
+        await db.execute(select(Licitacion).where(Licitacion.codigo == licitacion_codigo))
     ).scalar_one_or_none()
 
     if licitacion is None:
@@ -293,9 +295,7 @@ async def enviar_mensaje(
     """
     # 1. Verificar que la licitación existe
     licitacion = (
-        await db.execute(
-            select(Licitacion).where(Licitacion.codigo == licitacion_codigo)
-        )
+        await db.execute(select(Licitacion).where(Licitacion.codigo == licitacion_codigo))
     ).scalar_one_or_none()
 
     if licitacion is None:
@@ -305,9 +305,7 @@ async def enviar_mensaje(
         )
 
     # 2. Rate limit: contar mensajes user del día actual (UTC) para esta empresa
-    today_start = datetime.now(UTC).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
     mensajes_hoy: int = (
         await db.execute(

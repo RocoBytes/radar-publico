@@ -26,7 +26,7 @@ logger = structlog.get_logger(__name__)
 
 
 async def _contar_pendientes() -> int:
-    from sqlalchemy import exists, select
+    from sqlalchemy import select
 
     from app.db.session import AsyncSessionLocal
     from app.models.adjudicacion import Adjudicacion
@@ -38,7 +38,7 @@ async def _contar_pendientes() -> int:
             .where(Adjudicacion.licitacion_codigo == Licitacion.codigo)
             .exists()
         )
-        stmt = select(
+        select(
             select(Licitacion.codigo)
             .where(
                 Licitacion.estado_codigo == 8,
@@ -48,10 +48,10 @@ async def _contar_pendientes() -> int:
             .subquery()
         )
         # COUNT(*)
-        from sqlalchemy import func, select as sa_select
-        count_stmt = sa_select(
-            func.count()
-        ).select_from(
+        from sqlalchemy import func
+        from sqlalchemy import select as sa_select
+
+        count_stmt = sa_select(func.count()).select_from(
             select(Licitacion.codigo)
             .where(
                 Licitacion.estado_codigo == 8,
@@ -65,7 +65,7 @@ async def _contar_pendientes() -> int:
 
 
 async def _backfill(limit: int, dry_run: bool) -> None:
-    from sqlalchemy import exists, select
+    from sqlalchemy import select
 
     from app.db.session import AsyncSessionLocal, engine
     from app.models.adjudicacion import Adjudicacion
@@ -140,9 +140,7 @@ async def _backfill(limit: int, dry_run: bool) -> None:
 
         try:
             async with AsyncSessionLocal() as session:
-                await _sync_adjudicaciones(
-                    session, codigo, detalle.Items.Listado, detalle.Fechas
-                )
+                await _sync_adjudicaciones(session, codigo, detalle.Items.Listado, detalle.Fechas)
                 await session.commit()
             ok += 1
             if i % 50 == 0 or i == total:
@@ -153,9 +151,7 @@ async def _backfill(limit: int, dry_run: bool) -> None:
             print(f"  [{i}/{total}] {codigo} — ERROR: {e}")
             errores += 1
 
-    print(
-        f"\nResumen: {ok} procesadas · {sin_adj} sin adjudicaciones en items · {errores} errores"
-    )
+    print(f"\nResumen: {ok} procesadas · {sin_adj} sin adjudicaciones en items · {errores} errores")
     if not dry_run and (ok + errores) < total:
         restantes = total - ok - errores
         print(f"Quedan ~{restantes} licitaciones. Volvé a ejecutar para el próximo lote.")

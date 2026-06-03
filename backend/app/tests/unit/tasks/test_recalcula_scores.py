@@ -35,13 +35,9 @@ async def _limpieza_licitaciones_test(request: pytest.FixtureRequest) -> None:  
     async def _borrar() -> None:
         async with AsyncSessionLocal() as session:
             await session.execute(
-                delete(PipelineItem).where(
-                    PipelineItem.licitacion_codigo.like("TEST-SCORE-%")
-                )
+                delete(PipelineItem).where(PipelineItem.licitacion_codigo.like("TEST-SCORE-%"))
             )
-            await session.execute(
-                delete(Licitacion).where(Licitacion.codigo.like("TEST-SCORE-%"))
-            )
+            await session.execute(delete(Licitacion).where(Licitacion.codigo.like("TEST-SCORE-%")))
             await session.commit()
 
     await _borrar()

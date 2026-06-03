@@ -81,9 +81,7 @@ CurrentUser = Annotated[Usuario, Depends(get_current_user)]
 
 
 async def get_empresa_o_404(db: DbDep, current_user: CurrentUser) -> Empresa:
-    result = await db.execute(
-        select(Empresa).where(Empresa.usuario_id == current_user.id)
-    )
+    result = await db.execute(select(Empresa).where(Empresa.usuario_id == current_user.id))
     empresa = result.scalar_one_or_none()
     if empresa is None:
         raise HTTPException(

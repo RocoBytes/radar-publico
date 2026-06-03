@@ -55,12 +55,8 @@ class PlanAnualLinea(Base):
     )
     unspsc_nombre: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
-    monto_estimado: Mapped[Decimal | None] = mapped_column(
-        Numeric(18, 2), nullable=True
-    )
-    moneda: Mapped[str | None] = mapped_column(
-        String(10), nullable=True, server_default="'CLP'"
-    )
+    monto_estimado: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    moneda: Mapped[str | None] = mapped_column(String(10), nullable=True, server_default="'CLP'")
 
     # CHECK (mes_estimado BETWEEN 1 AND 12) — constraint en la BD, no en el ORM
     mes_estimado: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)

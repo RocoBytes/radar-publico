@@ -195,9 +195,7 @@ async def test_extraer_adjuntos_bloqueado_403() -> None:
 @pytest.mark.asyncio
 async def test_extraer_adjuntos_captcha_en_contenido() -> None:
     """Página con texto de captcha → PortalBloqueadoError aunque status sea 200."""
-    mock_page = _make_mock_page(
-        body_text="Por favor complete el captcha para continuar"
-    )
+    mock_page = _make_mock_page(body_text="Por favor complete el captcha para continuar")
 
     with (
         patch(

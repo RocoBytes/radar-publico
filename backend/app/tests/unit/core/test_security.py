@@ -63,9 +63,7 @@ class TestJWT:
             "exp": datetime.now(UTC) + timedelta(minutes=15),
             "type": "refresh",  # tipo incorrecto
         }
-        token = jwt.encode(
-            payload, settings.jwt_secret, algorithm=settings.jwt_algorithm
-        )
+        token = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
         with pytest.raises(InvalidTokenError, match="Tipo de token incorrecto"):
             decode_access_token(token)
 

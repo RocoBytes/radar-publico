@@ -71,9 +71,7 @@ async def marcar_leida(
     Solo aplica a notificaciones de canal in_app.
     """
 
-    result = await db.execute(
-        select(Notificacion).where(Notificacion.id == notif_id)
-    )
+    result = await db.execute(select(Notificacion).where(Notificacion.id == notif_id))
     notif = result.scalar_one_or_none()
 
     if notif is None or notif.empresa_id != empresa.id:

@@ -91,9 +91,7 @@ async def _run(documento_id: str) -> dict[str, int]:
     # Persistir embeddings en transacción
     async with AsyncSessionLocal() as session:
         for chunk, vector in zip(chunks_pendientes, vectores, strict=True):
-            chunk_db: DocumentoChunk | None = await session.get(
-                DocumentoChunk, chunk.id
-            )
+            chunk_db: DocumentoChunk | None = await session.get(DocumentoChunk, chunk.id)
             if chunk_db is not None:
                 chunk_db.embedding = vector
 

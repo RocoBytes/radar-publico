@@ -91,9 +91,7 @@ async def obtener_resumen(
     # 4. En pipeline (cualquier estado)
     pipeline_r = await db.execute(
         select(func.count()).select_from(
-            select(PipelineItem.id)
-            .where(PipelineItem.empresa_id == empresa.id)
-            .subquery()
+            select(PipelineItem.id).where(PipelineItem.empresa_id == empresa.id).subquery()
         )
     )
     en_pipeline: int = pipeline_r.scalar_one()
@@ -104,11 +102,7 @@ async def obtener_resumen(
         .where(PipelineItem.empresa_id == empresa.id)
         .order_by(PipelineItem.score.desc().nulls_last())
         .limit(_TOP_N)
-        .options(
-            selectinload(PipelineItem.licitacion).options(
-                selectinload(Licitacion.organismo)
-            )
-        )
+        .options(selectinload(PipelineItem.licitacion).options(selectinload(Licitacion.organismo)))
     )
     top_items = list(top_r.scalars().all())
 
@@ -124,9 +118,7 @@ async def obtener_resumen(
                 fecha_cierre=item.licitacion.fecha_cierre,
                 monto_estimado=item.licitacion.monto_estimado,
                 organismo_nombre=(
-                    item.licitacion.organismo.nombre
-                    if item.licitacion.organismo
-                    else None
+                    item.licitacion.organismo.nombre if item.licitacion.organismo else None
                 ),
             ),
         )
@@ -198,9 +190,7 @@ async def obtener_segmentos(
             return DashboardSegmentosResponse(segmentos=[])
         # Primer segmento (2 dígitos) de cada código de interés
         segmentos_interes = {c[:2] for c in codigos}
-        base = base.where(
-            func.left(LicitacionItem.unspsc_codigo, 2).in_(segmentos_interes)
-        )
+        base = base.where(func.left(LicitacionItem.unspsc_codigo, 2).in_(segmentos_interes))
 
     rows = (await db.execute(base)).all()
 

@@ -77,4 +77,4 @@ def emit_licitacion_state_change(
             error=str(exc),
             retries=self.request.retries,
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc

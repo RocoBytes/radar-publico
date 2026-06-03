@@ -61,9 +61,7 @@ def create_access_token(subject: str, expires_delta: timedelta | None = None) ->
 def decode_access_token(token: str) -> AccessTokenPayload:
     """Decodifica y valida el JWT. Lanza InvalidTokenError si es inválido."""
     try:
-        raw = jwt.decode(
-            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
-        )
+        raw = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         if raw.get("type") != "access":
             raise InvalidTokenError("Tipo de token incorrecto")
         return AccessTokenPayload(**raw)

@@ -65,9 +65,7 @@ class AdminService:
             raise CuentaYaExisteError("email")
 
         # Verificar unicidad de RUT en empresas
-        result_rut = await self._db.execute(
-            select(Empresa).where(Empresa.rut == rut)
-        )
+        result_rut = await self._db.execute(select(Empresa).where(Empresa.rut == rut))
         if result_rut.scalar_one_or_none() is not None:
             raise CuentaYaExisteError("rut")
 
@@ -118,9 +116,7 @@ class AdminService:
                 email=email,
                 temp_password=temp_password,
             )
-            await email_sender.send_email(
-                to=email, subject=subject, html=html, text=text
-            )
+            await email_sender.send_email(to=email, subject=subject, html=html, text=text)
         except Exception:
             # El log del error lo maneja el sender; la cuenta ya existe
             logger.warning("bienvenida_email_fallido", usuario_id=str(usuario.id))

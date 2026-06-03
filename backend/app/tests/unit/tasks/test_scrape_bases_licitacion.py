@@ -46,7 +46,7 @@ def _make_adjunto(nombre: str = "Bases Administrativas.pdf") -> MagicMock:
     return adj
 
 
-def _make_storage_result(storage_path: str = "bases/TEST/uuid.pdf") -> "StorageResult":
+def _make_storage_result(storage_path: str = "bases/TEST/uuid.pdf") -> StorageResult:
     from app.services.storage.r2 import StorageResult
 
     return StorageResult(
@@ -146,9 +146,7 @@ async def test_scrape_bases_nueva(licitacion_existente: dict[str, str]) -> None:
 
         lic = await session.get(Licitacion, codigo)
         assert lic is not None
-        assert (
-            lic.bases_descargadas_at is not None
-        ), "bases_descargadas_at debe estar seteado"  # noqa: E501
+        assert lic.bases_descargadas_at is not None, "bases_descargadas_at debe estar seteado"
 
 
 @pytest.mark.asyncio
@@ -224,9 +222,7 @@ async def test_scrape_bases_no_encontrada(licitacion_existente: dict[str, str]) 
     async with AsyncSessionLocal() as session:
         lic = await session.get(Licitacion, codigo)
         assert lic is not None
-        assert (
-            lic.bases_descargadas_at is None
-        ), "bases_descargadas_at no debe setearse en 404"
+        assert lic.bases_descargadas_at is None, "bases_descargadas_at no debe setearse en 404"
 
 
 @pytest.mark.asyncio

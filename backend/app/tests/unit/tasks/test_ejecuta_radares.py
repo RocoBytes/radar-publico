@@ -37,13 +37,9 @@ async def _limpieza_licitaciones_radar(request: pytest.FixtureRequest) -> None: 
     async def _borrar() -> None:
         async with AsyncSessionLocal() as session:
             await session.execute(
-                delete(PipelineItem).where(
-                    PipelineItem.licitacion_codigo.like("TEST-RADAR-%")
-                )
+                delete(PipelineItem).where(PipelineItem.licitacion_codigo.like("TEST-RADAR-%"))
             )
-            await session.execute(
-                delete(Licitacion).where(Licitacion.codigo.like("TEST-RADAR-%"))
-            )
+            await session.execute(delete(Licitacion).where(Licitacion.codigo.like("TEST-RADAR-%")))
             await session.commit()
 
     await _borrar()
@@ -353,9 +349,7 @@ async def test_filtro_q(empresa_radar_fixture: dict[str, object]) -> None:
     # Verificar que el único PipelineItem apunta a la licitación correcta
     async with AsyncSessionLocal() as session:
         count_total = (
-            await session.execute(
-                select(func.count()).where(PipelineItem.empresa_id == empresa_id)
-            )
+            await session.execute(select(func.count()).where(PipelineItem.empresa_id == empresa_id))
         ).scalar()
         assert count_total == 1, f"Esperado 1 PipelineItem, got {count_total}"
 

@@ -13,14 +13,12 @@ Convenciones:
 
 from __future__ import annotations
 
-import uuid
-from collections.abc import AsyncGenerator, Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+import uuid
 
 import pytest_asyncio
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.encryption import encrypt_ticket
 from app.core.security import create_access_token
@@ -34,8 +32,13 @@ from app.models.enums import (
 from app.models.licitacion import Licitacion
 from app.models.organismo import Organismo
 from app.models.ticket import TicketApi
-from app.models.usuario import Usuario
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Callable
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.models.usuario import Usuario
 
 # ---------------------------------------------------------------------------
 # Helper de autenticación (sin round-trip HTTP)
@@ -153,9 +156,7 @@ async def make_licitacion(
 
     yield _factory
 
-    await db_session.execute(
-        delete(Licitacion).where(Licitacion.codigo.in_(codigos_creados))
-    )
+    await db_session.execute(delete(Licitacion).where(Licitacion.codigo.in_(codigos_creados)))
     await db_session.commit()
 
 
@@ -222,9 +223,7 @@ async def proveedor_activo(
         with_empresa=True,
         razon_social="E2E Test SpA",
     )
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == user.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == user.id))
     empresa: Empresa = result.scalar_one()
     ticket = await make_ticket(empresa.id)
 

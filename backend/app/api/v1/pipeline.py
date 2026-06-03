@@ -44,18 +44,12 @@ async def _get_item_de_empresa_o_404(
     con_notas: bool = False,
 ) -> PipelineItem:
     opts = [
-        selectinload(PipelineItem.licitacion).options(
-            selectinload(Licitacion.organismo)
-        ),
+        selectinload(PipelineItem.licitacion).options(selectinload(Licitacion.organismo)),
     ]
     if con_notas:
         opts.append(selectinload(PipelineItem.notas))
 
-    result = await db.execute(
-        select(PipelineItem)
-        .where(PipelineItem.id == item_id)
-        .options(*opts)
-    )
+    result = await db.execute(select(PipelineItem).where(PipelineItem.id == item_id).options(*opts))
     item = result.scalar_one_or_none()
 
     if item is None:
@@ -81,9 +75,7 @@ def _licitacion_response(licitacion: Licitacion) -> LicitacionEnPipelineResponse
         monto_estimado=licitacion.monto_estimado,
         fecha_publicacion=licitacion.fecha_publicacion,
         fecha_cierre=licitacion.fecha_cierre,
-        organismo_nombre=(
-            licitacion.organismo.nombre if licitacion.organismo else None
-        ),
+        organismo_nombre=(licitacion.organismo.nombre if licitacion.organismo else None),
     )
 
 
@@ -94,9 +86,7 @@ def _build_list_item(item: PipelineItem, notas_count: int) -> PipelineItemListIt
         score=item.score,
         score_justificacion=item.score_justificacion,
         razon_descarte=item.razon_descarte,
-        monto_postulado=(
-            float(item.monto_postulado) if item.monto_postulado is not None else None
-        ),
+        monto_postulado=(float(item.monto_postulado) if item.monto_postulado is not None else None),
         resultado_observaciones=item.resultado_observaciones,
         detected_by_radar_id=item.detected_by_radar_id,
         notas_count=notas_count,
@@ -113,9 +103,7 @@ def _build_detail(item: PipelineItem) -> PipelineItemResponse:
         score=item.score,
         score_justificacion=item.score_justificacion,
         razon_descarte=item.razon_descarte,
-        monto_postulado=(
-            float(item.monto_postulado) if item.monto_postulado is not None else None
-        ),
+        monto_postulado=(float(item.monto_postulado) if item.monto_postulado is not None else None),
         resultado_observaciones=item.resultado_observaciones,
         detected_by_radar_id=item.detected_by_radar_id,
         notas_count=len(item.notas),
@@ -216,9 +204,7 @@ async def listar_pipeline(
         base = base.where(PipelineItem.licitacion_codigo == licitacion_codigo)
 
     # Total para la paginación
-    count_result = await db.execute(
-        select(func.count()).select_from(base.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base.subquery()))
     total = count_result.scalar_one()
 
     # Página de ítems con relaciones
@@ -230,9 +216,7 @@ async def listar_pipeline(
         .offset((page - 1) * page_size)
         .limit(page_size)
         .options(
-            selectinload(PipelineItem.licitacion).options(
-                selectinload(Licitacion.organismo)
-            ),
+            selectinload(PipelineItem.licitacion).options(selectinload(Licitacion.organismo)),
             selectinload(PipelineItem.notas),
         )
     )
@@ -368,9 +352,7 @@ async def eliminar_nota(
     """Elimina una nota de un ítem del pipeline."""
     await _get_item_de_empresa_o_404(item_id, empresa.id, db)
 
-    result = await db.execute(
-        select(PipelineNota).where(PipelineNota.id == nota_id)
-    )
+    result = await db.execute(select(PipelineNota).where(PipelineNota.id == nota_id))
     nota = result.scalar_one_or_none()
 
     if nota is None:

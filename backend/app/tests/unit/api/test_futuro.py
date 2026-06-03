@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
-import uuid
 
 import pytest
 import pytest_asyncio
@@ -48,16 +47,10 @@ async def _limpieza(db_session: AsyncSession) -> None:  # type: ignore[misc]
 
     async def _borrar() -> None:
         await db_session.execute(
-            delete(LicitacionItem).where(
-                LicitacionItem.licitacion_codigo.like("TEST-FUT-%")
-            )
+            delete(LicitacionItem).where(LicitacionItem.licitacion_codigo.like("TEST-FUT-%"))
         )
-        await db_session.execute(
-            delete(Licitacion).where(Licitacion.codigo.like("TEST-FUT-%"))
-        )
-        await db_session.execute(
-            delete(Interes).where(Interes.valor.in_(["73", "80"]))
-        )
+        await db_session.execute(delete(Licitacion).where(Licitacion.codigo.like("TEST-FUT-%")))
+        await db_session.execute(delete(Interes).where(Interes.valor.in_(["73", "80"])))
         await db_session.execute(
             delete(PlanAnualLinea).where(PlanAnualLinea.descripcion.like("TEST-PAC%"))
         )
@@ -83,9 +76,7 @@ async def empresa_con_usuario(
         with_empresa=True,
         razon_social="Futuro Test SpA",
     )
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == user.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == user.id))
     empresa: Empresa = result.scalar_one()
     return user, empresa
 
@@ -139,9 +130,10 @@ async def _crear_plan_linea(
     status: PlanAnualStatus = PlanAnualStatus.planificada,
 ) -> Any:
     """Inserta una PlanAnualLinea directamente en BD y retorna la instancia."""
+    from sqlalchemy import select
+
     from app.models.organismo import Organismo
     from app.models.plan_anual import PlanAnualLinea
-    from sqlalchemy import select
 
     # Crear el organismo si no existe (FK real, no puede ser nulo)
     result = await db_session.execute(
@@ -198,7 +190,9 @@ async def test_renovaciones_aparece_adjudicada_renovable(
 ) -> None:
     """Licitación adjudicada+renovable dentro del horizonte aparece en el feed."""
     user, _ = empresa_con_usuario
-    await _crear_licitacion_renovable(db_session, codigo="TEST-FUT-001", dias_termino_desde_ahora=60)
+    await _crear_licitacion_renovable(
+        db_session, codigo="TEST-FUT-001", dias_termino_desde_ahora=60
+    )
 
     r = await client.get(
         "/api/v1/futuro/renovaciones",
@@ -268,13 +262,9 @@ async def test_renovaciones_filtro_unspsc(
     await db_session.commit()
 
     # Licitación con item en segmento "73" → debe aparecer (FK válida: 73101500 existe)
-    await _crear_licitacion_renovable(
-        db_session, codigo="TEST-FUT-003", unspsc="73101500"
-    )
+    await _crear_licitacion_renovable(db_session, codigo="TEST-FUT-003", unspsc="73101500")
     # Licitación con item en segmento "80" → no debe aparecer (FK válida: 80101500 existe)
-    await _crear_licitacion_renovable(
-        db_session, codigo="TEST-FUT-004", unspsc="80101500"
-    )
+    await _crear_licitacion_renovable(db_session, codigo="TEST-FUT-004", unspsc="80101500")
 
     r = await client.get(
         "/api/v1/futuro/renovaciones",
@@ -465,9 +455,9 @@ async def test_plan_anual_filtro_q(
     )
     assert r_match.status_code == 200
     descripciones_match = [i["descripcion"] for i in r_match.json()["items"]]
-    assert any("limpieza" in d.lower() for d in descripciones_match), (
-        "El filtro q=limpieza debería retornar la línea de limpieza"
-    )
+    assert any(
+        "limpieza" in d.lower() for d in descripciones_match
+    ), "El filtro q=limpieza debería retornar la línea de limpieza"
 
     # Búsqueda que NO coincide
     r_no_match = await client.get(
@@ -476,9 +466,9 @@ async def test_plan_anual_filtro_q(
     )
     assert r_no_match.status_code == 200
     descripciones_no_match = [i["descripcion"] for i in r_no_match.json()["items"]]
-    assert not any("TEST-PAC Servicios de limpieza" in d for d in descripciones_no_match), (
-        "El filtro q=tecnologia no debería retornar la línea de limpieza"
-    )
+    assert not any(
+        "TEST-PAC Servicios de limpieza" in d for d in descripciones_no_match
+    ), "El filtro q=tecnologia no debería retornar la línea de limpieza"
 
 
 @pytest.mark.asyncio

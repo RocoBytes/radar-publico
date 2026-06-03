@@ -24,9 +24,7 @@ class EstadoLicitacion(enum.Enum):
     # Pseudo-estado para la query de hoy — no tiene código numérico
     ACTIVAS = (None, "activas", "publicada")
 
-    def __init__(
-        self, codigo: int | None, query_string: str, estado_interno: str
-    ) -> None:
+    def __init__(self, codigo: int | None, query_string: str, estado_interno: str) -> None:
         self.codigo = codigo
         self.query_string = query_string
         self.estado_interno = estado_interno

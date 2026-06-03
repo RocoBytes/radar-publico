@@ -8,10 +8,10 @@ GET  /api/v1/empresa/ticket-status   — estado del ticket ChileCompra de la emp
 
 from datetime import UTC, date, datetime
 
-import structlog
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import and_, func, select
+import structlog
 
 from app.api.deps import CurrentUser, DbDep
 from app.core import cache
@@ -30,9 +30,7 @@ async def _get_empresa_o_404(
     current_user: CurrentUser,
 ) -> Empresa:
     """Carga la empresa del usuario o lanza 404 si no existe."""
-    result = await db.execute(
-        select(Empresa).where(Empresa.usuario_id == current_user.id)
-    )
+    result = await db.execute(select(Empresa).where(Empresa.usuario_id == current_user.id))
     empresa = result.scalar_one_or_none()
     if empresa is None:
         raise HTTPException(
@@ -121,9 +119,7 @@ async def solicitar_ticket(
         ticket_ultimos_4=ticket_ultimos_4,
     )
 
-    return TicketRequestResponse(
-        mensaje="Solicitud enviada al equipo de soporte"
-    )
+    return TicketRequestResponse(mensaje="Solicitud enviada al equipo de soporte")
 
 
 @router.get("/ticket-status", response_model=TicketStatusResponse)
@@ -134,9 +130,7 @@ async def obtener_ticket_status(
     """Estado del ticket ChileCompra de la empresa del usuario autenticado."""
     empresa = await _get_empresa_o_404(db, current_user)
 
-    result = await db.execute(
-        select(TicketApi).where(TicketApi.empresa_id == empresa.id)
-    )
+    result = await db.execute(select(TicketApi).where(TicketApi.empresa_id == empresa.id))
     ticket = result.scalar_one_or_none()
 
     if ticket is None:

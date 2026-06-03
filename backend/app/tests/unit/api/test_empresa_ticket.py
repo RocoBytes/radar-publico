@@ -82,9 +82,7 @@ async def empresa_con_usuario(
         rut="76.555.444-3",
         razon_social="Ticket Test SpA",
     )
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == user.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == user.id))
     empresa: Empresa = result.scalar_one()
     return user, empresa
 

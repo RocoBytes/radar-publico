@@ -18,7 +18,6 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import delete, select
 
-
 # ---------------------------------------------------------------------------
 # Fixtures de limpieza
 # ---------------------------------------------------------------------------
@@ -33,13 +32,9 @@ async def _limpieza() -> None:  # type: ignore[misc]
     async def _borrar() -> None:
         async with AsyncSessionLocal() as session:
             await session.execute(
-                delete(Notificacion).where(
-                    Notificacion.licitacion_codigo.like("TEST-RENOV-%")
-                )
+                delete(Notificacion).where(Notificacion.licitacion_codigo.like("TEST-RENOV-%"))
             )
-            await session.execute(
-                delete(Licitacion).where(Licitacion.codigo.like("TEST-RENOV-%"))
-            )
+            await session.execute(delete(Licitacion).where(Licitacion.codigo.like("TEST-RENOV-%")))
             await session.commit()
 
     await _borrar()
@@ -119,8 +114,8 @@ async def _crear_licitacion_renovable_para(
     dias_termino: int = 60,
 ) -> None:
     from app.db.session import AsyncSessionLocal
-    from app.models.licitacion import Licitacion
     from app.models.enums import LicitacionEstado
+    from app.models.licitacion import Licitacion
 
     ahora = datetime.now(UTC)
     async with AsyncSessionLocal() as session:
@@ -220,11 +215,9 @@ async def test_no_notifica_fuera_del_horizonte(
     from app.tasks.detecta_renovaciones import _run
 
     empresa_id = empresa_con_ticket["empresa_id"]
-    await _crear_licitacion_renovable_para(
-        empresa_id, codigo="TEST-RENOV-003", dias_termino=400
-    )
+    await _crear_licitacion_renovable_para(empresa_id, codigo="TEST-RENOV-003", dias_termino=400)
 
-    result = await _run()
+    await _run()
 
     async with AsyncSessionLocal() as session:
         notif_r = await session.execute(

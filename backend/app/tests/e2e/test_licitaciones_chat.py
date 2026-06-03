@@ -20,26 +20,24 @@ Nota sobre patch del LLM:
 
 from __future__ import annotations
 
-import uuid
-from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-from typing import Any
-from unittest.mock import patch
+from typing import TYPE_CHECKING, Any
+import uuid
 
 import pytest
-import pytest_asyncio
-from httpx import AsyncClient
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.catalogos import Unspsc
 from app.models.conversacion import ConversacionIA, ConversacionMensaje
 from app.models.enums import LicitacionEstado, MensajeRol
-from app.models.licitacion import Licitacion, LicitacionItem
 
 # Importa helper de auth del conftest e2e (disponible por discovery automático de pytest)
 from app.tests.e2e.conftest import auth_headers
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
+    from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 # ---------------------------------------------------------------------------
 # Fake LLM stream — evita llamadas reales a Anthropic
@@ -56,24 +54,22 @@ async def _fake_stream(messages: list[dict[str, str]]) -> AsyncGenerator[str, No
 # ---------------------------------------------------------------------------
 
 
-async def _limpiar_conversaciones(
-    db_session: AsyncSession, empresa_id: uuid.UUID
-) -> None:
+async def _limpiar_conversaciones(db_session: AsyncSession, empresa_id: uuid.UUID) -> None:
     """Elimina todas las conversaciones y mensajes de la empresa de test."""
     convs = (
-        await db_session.execute(
-            select(ConversacionIA).where(ConversacionIA.empresa_id == empresa_id)
-        )
-    ).scalars().all()
-    for conv in convs:
-        await db_session.execute(
-            delete(ConversacionMensaje).where(
-                ConversacionMensaje.conversacion_id == conv.id
+        (
+            await db_session.execute(
+                select(ConversacionIA).where(ConversacionIA.empresa_id == empresa_id)
             )
         )
-    await db_session.execute(
-        delete(ConversacionIA).where(ConversacionIA.empresa_id == empresa_id)
+        .scalars()
+        .all()
     )
+    for conv in convs:
+        await db_session.execute(
+            delete(ConversacionMensaje).where(ConversacionMensaje.conversacion_id == conv.id)
+        )
+    await db_session.execute(delete(ConversacionIA).where(ConversacionIA.empresa_id == empresa_id))
     await db_session.commit()
 
 
@@ -253,9 +249,9 @@ async def test_paginacion_sin_solapamiento(
     assert len(codigos_p1) == 10
     assert len(codigos_p2) >= 1
     # Ningún solapamiento
-    assert codigos_p1.isdisjoint(codigos_p2), (
-        f"Solapamiento en paginación: {codigos_p1 & codigos_p2}"
-    )
+    assert codigos_p1.isdisjoint(
+        codigos_p2
+    ), f"Solapamiento en paginación: {codigos_p1 & codigos_p2}"
 
 
 @pytest.mark.e2e
@@ -557,7 +553,10 @@ async def test_inadmisibilidad_sin_analisis_retorna_false(
     make_licitacion: Any,
     proveedor_activo: dict[str, Any],
 ) -> None:
-    """US-6.2: licitación sin AnalisisBases → /inadmisibilidad → 200 con analisis_disponible=false."""
+    """US-6.2: licitación sin AnalisisBases → /inadmisibilidad → 200.
+
+    analisis_disponible debe ser false.
+    """
     lic = await make_licitacion()
 
     resp = await client.get(

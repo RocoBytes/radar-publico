@@ -96,7 +96,9 @@ class BorradorPropuesta(Base):
     __tablename__ = "borradores_propuesta"
     __table_args__ = (
         UniqueConstraint(
-            "licitacion_codigo", "empresa_id", "version",
+            "licitacion_codigo",
+            "empresa_id",
+            "version",
             name="uq_borrador_licitacion_empresa_version",
         ),
     )

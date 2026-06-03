@@ -83,9 +83,7 @@ class AuthService:
             update_values: dict[str, object] = {"failed_login_attempts": new_attempts}
 
             if new_attempts >= _MAX_ATTEMPTS:
-                update_values["locked_until"] = now + timedelta(
-                    minutes=_LOCKOUT_MINUTES
-                )
+                update_values["locked_until"] = now + timedelta(minutes=_LOCKOUT_MINUTES)
                 logger.warning("auth.account.locked", user_id=str(user.id))
 
             await self._db.execute(
@@ -261,8 +259,7 @@ class AuthService:
         prt = PasswordResetToken(
             usuario_id=user.id,
             token_hash=token_hash,
-            expires_at=now
-            + timedelta(minutes=settings.password_reset_token_expire_minutes),
+            expires_at=now + timedelta(minutes=settings.password_reset_token_expire_minutes),
         )
         self._db.add(prt)
 
@@ -288,18 +285,14 @@ class AuthService:
         now = datetime.now(UTC)
 
         result = await self._db.execute(
-            select(PasswordResetToken).where(
-                PasswordResetToken.token_hash == token_hash
-            )
+            select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
         )
         prt = result.scalar_one_or_none()
 
         if prt is None or prt.usado_at is not None or prt.expires_at <= now:
             raise InvalidTokenError
 
-        user_result = await self._db.execute(
-            select(Usuario).where(Usuario.id == prt.usuario_id)
-        )
+        user_result = await self._db.execute(select(Usuario).where(Usuario.id == prt.usuario_id))
         user = user_result.scalar_one()
 
         user.password_hash = hash_password(new_password)

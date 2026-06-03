@@ -6,10 +6,10 @@ POST /api/v1/licitaciones/{codigo}/analisis  — encola o re-encola el análisis
 
 from __future__ import annotations
 
-import structlog
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
+import structlog
 
 from app.api.deps import CurrentUser, DbDep, EmpresaDep  # noqa: TCH001
 from app.models.analisis_ia import AnalisisBases, BorradorPropuesta
@@ -39,8 +39,7 @@ async def get_analisis_bases(
     Cuando status='pendiente' o 'procesando', el cliente debe re-consultar en ~5s.
     """
     result = await db.execute(
-        select(AnalisisBases)
-        .where(
+        select(AnalisisBases).where(
             AnalisisBases.licitacion_codigo == codigo,
             AnalisisBases.version == 1,
         )
@@ -117,13 +116,17 @@ async def trigger_analisis_bases(
 
     # Encolar tarea (idempotente — la tarea verifica el estado antes de procesar)
     from app.celery_app import celery_app
+
     celery_app.send_task(
         "tasks.analizar_bases.analizar_bases_licitacion",
         args=[codigo],
     )
 
     logger.info("analisis_encolado", codigo=codigo)
-    return {"status": "encolado", "mensaje": "El análisis fue solicitado. Consultá el resultado en unos segundos."}
+    return {
+        "status": "encolado",
+        "mensaje": "El análisis fue solicitado. Consultá el resultado en unos segundos.",
+    }
 
 
 # ── Módulo 1b: Inadmisibilidad derivada del análisis de bases ────────────────
@@ -153,12 +156,14 @@ def _resumen_riesgo(nivel: NivelRiesgo, n_items: int) -> str:
             "Revisá cada restricción con atención antes de decidir postular."
         ),
         "medio": (
-            f"Hay {n_items} requisito{'s' if n_items != 1 else ''} formal{'es' if n_items != 1 else ''} "
+            f"Hay {n_items} requisito{'s' if n_items != 1 else ''}"
+            f" formal{'es' if n_items != 1 else ''} "
             "que debés verificar. El riesgo es manejable si reunís la documentación a tiempo."
         ),
         "bajo": (
-            f"Perfil de admisibilidad favorable. "
-            "Solo {n_items} requisito{'s' if n_items != 1 else ''} formal{'es' if n_items != 1 else ''} estándar."
+            "Perfil de admisibilidad favorable. "
+            "Solo {n_items} requisito{'s' if n_items != 1 else ''}"
+            " formal{'es' if n_items != 1 else ''} estándar."
             if n_items > 0
             else "No se detectaron barreras formales de admisibilidad en las bases."
         ),
@@ -212,7 +217,9 @@ async def get_inadmisibilidad(
 
     for r in analisis.restricciones or []:
         descripcion = r if isinstance(r, str) else r.get("descripcion", str(r))
-        items.append(ItemAdmisibilidad(tipo="restriccion", descripcion=descripcion, urgencia="alta"))
+        items.append(
+            ItemAdmisibilidad(tipo="restriccion", descripcion=descripcion, urgencia="alta")
+        )
 
     for d in analisis.documentos_obligatorios or []:
         if isinstance(d, dict):
@@ -227,7 +234,9 @@ async def get_inadmisibilidad(
     for req in analisis.requisitos_tecnicos or []:
         if isinstance(req, dict) and req.get("tipo") == "obligatorio":
             descripcion = req.get("descripcion", str(req))
-            items.append(ItemAdmisibilidad(tipo="requisito", descripcion=descripcion, urgencia="media"))
+            items.append(
+                ItemAdmisibilidad(tipo="requisito", descripcion=descripcion, urgencia="media")
+            )
 
     n_restricciones = sum(1 for i in items if i.tipo == "restriccion")
     n_documentos = sum(1 for i in items if i.tipo == "documento")
@@ -339,13 +348,17 @@ async def trigger_borrador_propuesta(
 
     # Encolar tarea (idempotente — la tarea verifica el estado antes de procesar)
     from app.celery_app import celery_app
+
     celery_app.send_task(
         "tasks.generar_borrador.generar_borrador_propuesta",
         args=[codigo, str(empresa.id)],
     )
 
     logger.info("borrador_encolado", codigo=codigo, empresa_id=str(empresa.id))
-    return {"status": "encolado", "mensaje": "El borrador fue solicitado. Consultá el resultado en unos segundos."}
+    return {
+        "status": "encolado",
+        "mensaje": "El borrador fue solicitado. Consultá el resultado en unos segundos.",
+    }
 
 
 @router.get(

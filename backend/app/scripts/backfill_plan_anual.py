@@ -5,13 +5,13 @@ USO:
     python -m app.scripts.backfill_plan_anual --ano 2024 --force
 
 CUOTA:
-    Regla de oro #17: bulk loads SOLO en horario nocturno (22:00–07:00 CLT).
+    Regla de oro #17: bulk loads SOLO en horario nocturno (22:00-07:00 CLT).
     Regla de oro #18: máximo 5 req/s. Backoff exponencial ante 429/5xx.
     Regla de oro #29: idempotente — upsert no duplica filas.
     Regla de oro #2:  ticket descifrado solo en memoria, nunca loggear.
 
 EJECUCIÓN RECOMENDADA:
-    - Nocturna (22:00–07:00 CLT) para no interferir con la cuota diurna.
+    - Nocturna (22:00-07:00 CLT) para no interferir con la cuota diurna.
     - Un año por corrida. Cada organismo puede tener cientos de líneas.
     - Puede interrumpirse y retomarse (idempotencia garantizada por upsert).
 """
@@ -36,7 +36,7 @@ _HORA_FIN_NOCTURNO = 7  # 07:00 (del día siguiente)
 def _es_horario_nocturno() -> bool:
     """Verifica si la hora actual está dentro de la ventana nocturna CLT.
 
-    La ventana es 22:00–07:00, cruza la medianoche.
+    La ventana es 22:00-07:00, cruza la medianoche.
     Regla de oro #17.
     """
     ahora_clt = datetime.now(_CLT)
@@ -83,7 +83,7 @@ async def run_backfill(ano: int, force: bool) -> None:
         ahora_clt = datetime.now(_CLT).strftime("%H:%M CLT")
         print(
             f"\nAVISO: Son las {ahora_clt}, fuera de la ventana nocturna recomendada "
-            f"(22:00–07:00 CLT).\n"
+            f"(22:00-07:00 CLT).\n"
             "Ejecutar cargas masivas en horario diurno puede interferir con la cuota\n"
             "de sincronización en tiempo real (regla de oro #17).\n\n"
             "Opciones:\n"
@@ -122,7 +122,7 @@ async def run_backfill(ano: int, force: bool) -> None:
     # Importar la lógica de sincronización de la tarea Celery para reutilizarla
     # en vez de duplicarla. El script llama la función async directamente.
     from app.core.encryption import decrypt_ticket
-    from app.tasks.sync_plan_anual import _sync_plan_empresa  # noqa: PLC2701
+    from app.tasks.sync_plan_anual import _sync_plan_empresa
 
     total: dict[str, int] = {"upserted": 0, "paginas": 0, "errores": 0}
     lineas_desde_ultimo_log = 0
@@ -222,18 +222,12 @@ def main() -> None:
 
     ano_actual = datetime.now(UTC).year
     if args.ano < 2010 or args.ano > ano_actual + 2:
-        print(
-            f"ERROR: Año {args.ano} fuera del rango razonable "
-            f"(2010–{ano_actual + 2})."
-        )
+        print(f"ERROR: Año {args.ano} fuera del rango razonable " f"(2010-{ano_actual + 2}).")
         sys.exit(1)
 
     print(f"Backfill Plan Anual de Compras — año {args.ano}")
     if not args.force:
-        print(
-            "Verificando ventana nocturna CLT...\n"
-            "Usá --force para omitir el check."
-        )
+        print("Verificando ventana nocturna CLT...\n" "Usá --force para omitir el check.")
 
     asyncio.run(run_backfill(ano=args.ano, force=args.force))
 

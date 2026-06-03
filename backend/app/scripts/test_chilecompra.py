@@ -150,12 +150,8 @@ async def main() -> None:
     from sqlalchemy import func, select
 
     async with AsyncSessionLocal() as session:
-        total_bd = (
-            await session.execute(select(func.count()).select_from(Licitacion))
-        ).scalar()
-        ultima = (
-            await session.execute(select(func.max(Licitacion.fecha_publicacion)))
-        ).scalar()
+        total_bd = (await session.execute(select(func.count()).select_from(Licitacion))).scalar()
+        ultima = (await session.execute(select(func.max(Licitacion.fecha_publicacion)))).scalar()
 
     print(f"\n    Total licitaciones en BD  : {total_bd:,}")
     print(f"    Última fecha_publicacion  : {ultima}")

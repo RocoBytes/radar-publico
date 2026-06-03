@@ -30,8 +30,7 @@ logger = structlog.get_logger()
 
 _PORTAL_BASE = "https://www.mercadopublico.cl"
 _PORTAL_URL = (
-    f"{_PORTAL_BASE}/Procurement/Modules/RFB/"
-    "DetailsAcquisition.aspx?idlicitacion={codigo}"
+    f"{_PORTAL_BASE}/Procurement/Modules/RFB/" "DetailsAcquisition.aspx?idlicitacion={codigo}"
 )
 
 # Indicadores de página de bloqueo/captcha
@@ -88,8 +87,7 @@ async def extraer_adjuntos(codigo: str) -> list[AdjuntoLicitacion]:
 
         if response.status >= 500:
             raise ScrapingError(
-                f"Error del servidor del portal "
-                f"(HTTP {response.status}) para {codigo!r}"
+                f"Error del servidor del portal " f"(HTTP {response.status}) para {codigo!r}"
             )
 
         # Detectar captcha / bloqueo en el contenido de la página
@@ -99,9 +97,7 @@ async def extraer_adjuntos(codigo: str) -> list[AdjuntoLicitacion]:
             body_text = ""
 
         if any(ind in body_text.lower() for ind in _INDICADORES_BLOQUEO):
-            raise PortalBloqueadoError(
-                f"Portal requiere verificación humana para {codigo!r}"
-            )
+            raise PortalBloqueadoError(f"Portal requiere verificación humana para {codigo!r}")
 
         adjuntos = await _extraer_links_documentos(page, codigo)
 

@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 import uuid
 
-from httpx import AsyncClient
 import pytest
 import pytest_asyncio
 from sqlalchemy import delete, select
@@ -34,6 +33,7 @@ from app.models.enums import AnalisisStatus, LicitacionEstado
 from app.models.licitacion import Licitacion
 
 if TYPE_CHECKING:
+    from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
 
 # ---------------------------------------------------------------------------
@@ -92,9 +92,7 @@ def _make_borrador(
 async def _get_empresa_id(user_id: uuid.UUID) -> uuid.UUID:
     """Obtiene el id de la empresa del usuario usando una sesión fresca."""
     async with _db_session_module.AsyncSessionLocal() as s:
-        result = await s.execute(
-            select(Empresa).where(Empresa.usuario_id == user_id)
-        )
+        result = await s.execute(select(Empresa).where(Empresa.usuario_id == user_id))
         empresa = result.scalar_one()
         return empresa.id
 
@@ -214,9 +212,9 @@ async def test_get_propuesta_borrador_otra_empresa_retorna_404(
         f"/api/v1/licitaciones/{codigo}/propuesta",
         headers=_auth_headers(user_b.id),
     )
-    assert resp.status_code == 404, (
-        f"user_b no debe ver el borrador de user_a, obtenido: {resp.status_code}"
-    )
+    assert (
+        resp.status_code == 404
+    ), f"user_b no debe ver el borrador de user_a, obtenido: {resp.status_code}"
 
 
 # ===========================================================================
@@ -291,14 +289,14 @@ async def test_post_propuesta_analisis_listo_encola_tarea(
 
     mock_send.assert_called_once()
     call_args = mock_send.call_args
-    assert call_args[0][0] == "tasks.generar_borrador.generar_borrador_propuesta", (
-        f"Nombre de tarea incorrecto: {call_args[0][0]!r}"
-    )
+    assert (
+        call_args[0][0] == "tasks.generar_borrador.generar_borrador_propuesta"
+    ), f"Nombre de tarea incorrecto: {call_args[0][0]!r}"
     task_args = call_args[1]["args"] if "args" in call_args[1] else call_args[0][1]
     assert task_args[0] == codigo, f"Primer arg debe ser el codigo: {task_args}"
-    assert task_args[1] == str(empresa_id), (
-        f"Segundo arg debe ser str(empresa.id)={str(empresa_id)!r}, obtenido: {task_args[1]!r}"
-    )
+    assert task_args[1] == str(
+        empresa_id
+    ), f"Segundo arg debe ser str(empresa.id)={str(empresa_id)!r}, obtenido: {task_args[1]!r}"
 
 
 # Caso 9: borrador ya procesando → 202 "en_proceso", send_task NO llamado
@@ -324,9 +322,7 @@ async def test_post_propuesta_borrador_procesando_no_reencola(
 
     assert resp.status_code == 202
     data = resp.json()
-    assert data["status"] == "en_proceso", (
-        f"Esperado 'en_proceso', obtenido: {data['status']}"
-    )
+    assert data["status"] == "en_proceso", f"Esperado 'en_proceso', obtenido: {data['status']}"
     mock_send.assert_not_called()
 
 
@@ -404,9 +400,9 @@ async def test_export_propuesta_borrador_procesando_retorna_404(
         f"/api/v1/licitaciones/{codigo}/propuesta/export",
         headers=_auth_headers(user.id),
     )
-    assert resp.status_code == 404, (
-        f"Borrador procesando debe retornar 404, obtenido: {resp.status_code}"
-    )
+    assert (
+        resp.status_code == 404
+    ), f"Borrador procesando debe retornar 404, obtenido: {resp.status_code}"
 
 
 # Caso 14: borrador listo → 200 con Content-Type DOCX y filename correcto
@@ -430,9 +426,9 @@ async def test_export_propuesta_borrador_listo_retorna_docx(
     assert resp.status_code == 200, f"Esperado 200, obtenido: {resp.status_code}"
 
     content_type = resp.headers.get("content-type", "")
-    assert "officedocument.wordprocessingml.document" in content_type, (
-        f"Content-Type debe ser DOCX, obtenido: {content_type!r}"
-    )
+    assert (
+        "officedocument.wordprocessingml.document" in content_type
+    ), f"Content-Type debe ser DOCX, obtenido: {content_type!r}"
 
     content_disposition = resp.headers.get("content-disposition", "")
     assert f"propuesta-{codigo}.docx" in content_disposition, (

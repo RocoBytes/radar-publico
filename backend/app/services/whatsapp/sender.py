@@ -11,16 +11,14 @@ La lógica de "si está deshabilitado, saltar" vive en el caller
 (procesar_notificaciones). Este módulo siempre intenta enviar si se llama.
 """
 
-import structlog
 import httpx
+import structlog
 
 from app.config import settings
 
 logger = structlog.get_logger()
 
-_TWILIO_MESSAGES_URL = (
-    "https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
-)
+_TWILIO_MESSAGES_URL = "https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
 
 
 class WhatsAppConfigError(Exception):
@@ -68,9 +66,7 @@ async def send_whatsapp(to_number: str, body: str) -> str:
         )
 
     if resp.status_code >= 400:
-        raise WhatsAppEnvioError(
-            f"Twilio error {resp.status_code}: {resp.text[:300]}"
-        )
+        raise WhatsAppEnvioError(f"Twilio error {resp.status_code}: {resp.text[:300]}")
 
     message_sid: str = resp.json().get("sid", "")
     logger.info(

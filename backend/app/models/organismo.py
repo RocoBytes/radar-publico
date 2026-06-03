@@ -31,9 +31,7 @@ class Organismo(Base):
     region: Mapped[str | None] = mapped_column(String(100), nullable=True)
     comuna: Mapped[str | None] = mapped_column(String(100), nullable=True)
     direccion: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
-        "metadata", JSONB, nullable=True
-    )
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")

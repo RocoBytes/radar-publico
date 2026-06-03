@@ -239,26 +239,28 @@ async def test_filtro_por_unspsc(
     # ON CONFLICT DO NOTHING garantiza idempotencia entre runs consecutivos.
     await db_session.execute(
         pg_insert(Unspsc)
-        .values([
-            {
-                "codigo": "73101500",
-                "nombre_es": "Limpieza general",
-                "nivel": 8,
-                "segmento": "73",
-                "familia": "7310",
-                "clase": "731015",
-                "commodity": "73101500",
-            },
-            {
-                "codigo": "80101500",
-                "nombre_es": "Auditoría contable",
-                "nivel": 8,
-                "segmento": "80",
-                "familia": "8010",
-                "clase": "801015",
-                "commodity": "80101500",
-            },
-        ])
+        .values(
+            [
+                {
+                    "codigo": "73101500",
+                    "nombre_es": "Limpieza general",
+                    "nivel": 8,
+                    "segmento": "73",
+                    "familia": "7310",
+                    "clase": "731015",
+                    "commodity": "73101500",
+                },
+                {
+                    "codigo": "80101500",
+                    "nombre_es": "Auditoría contable",
+                    "nivel": 8,
+                    "segmento": "80",
+                    "familia": "8010",
+                    "clase": "801015",
+                    "commodity": "80101500",
+                },
+            ]
+        )
         .on_conflict_do_nothing(index_elements=["codigo"])
     )
     await db_session.flush()

@@ -98,9 +98,7 @@ async def _run(documento_id: str) -> dict[str, int]:
     except (PdfEscaneadoError, PdfCorruptoError) as exc:
         # No reintentable — persistir error y salir
         async with AsyncSessionLocal() as session:
-            doc_update: DocumentoBase | None = await session.get(
-                DocumentoBase, doc_uuid
-            )
+            doc_update: DocumentoBase | None = await session.get(DocumentoBase, doc_uuid)
             if doc_update is not None:
                 doc_update.status = DocumentoStatus.error
                 doc_update.error_mensaje = str(exc)
@@ -126,9 +124,7 @@ async def _run(documento_id: str) -> dict[str, int]:
 
     # Persistir: borrar chunks anteriores (si re-procesamiento) + insertar nuevos
     async with AsyncSessionLocal() as session:
-        await session.execute(
-            delete(DocumentoChunk).where(DocumentoChunk.documento_id == doc_uuid)
-        )
+        await session.execute(delete(DocumentoChunk).where(DocumentoChunk.documento_id == doc_uuid))
 
         licitacion_codigo = doc.licitacion_codigo
         for chunk in chunks:

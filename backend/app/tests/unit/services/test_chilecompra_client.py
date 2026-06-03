@@ -146,9 +146,7 @@ class TestListarLicitaciones:
 
     @respx.mock
     async def test_401_lanza_ticket_invalido(self, mock_log: None) -> None:
-        respx.get(f"{BASE_URL}/licitaciones.json").mock(
-            return_value=httpx.Response(401)
-        )
+        respx.get(f"{BASE_URL}/licitaciones.json").mock(return_value=httpx.Response(401))
         async with MercadoPublicoClient() as client:
             with pytest.raises(TicketInvalidoError):
                 await client.listar_licitaciones_por_estado(

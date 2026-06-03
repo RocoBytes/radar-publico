@@ -39,19 +39,16 @@ BUG-5 (accion "activar" vs "reactivar"): El spec US-1.2 menciona accion="activar
 
 from __future__ import annotations
 
-import uuid
-from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
+import uuid
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.encryption import encrypt_ticket
-from app.core.security import create_access_token, hash_password, hash_token
+from app.core.security import create_access_token
 from app.models.empresa import Empresa
 from app.models.enums import TicketStatus, UserRole, UserStatus
 from app.models.eventos_auditoria import AuditAction, EventoAuditoria
@@ -59,6 +56,11 @@ from app.models.password_reset import PasswordResetToken
 from app.models.ticket import TicketApi
 from app.models.usuario import Usuario
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 # ---------------------------------------------------------------------------
 # Helpers de autenticación internos
@@ -72,7 +74,7 @@ def _auth_headers(user_id: uuid.UUID) -> dict[str, str]:
 
 def _rut_from_seed(seed: str) -> str:
     """Genera un RUT en formato XX.XXX.XXX-K a partir de un seed string.
-    
+
     Produce exactamente 8 dígitos (2+3+3) para satisfacer la regex
     ^DD.DDD.DDD-K (2+3+3 digits) del validador de RUT.
     """
@@ -145,7 +147,6 @@ async def test_login_cuenta_suspendida_retorna_mensaje_spec(
     assert resp.status_code == 401
     # El spec dice este mensaje; el código real devuelve "Credenciales inválidas"
     assert "Cuenta no disponible" in resp.json()["detail"]
-
 
 
 @pytest.mark.e2e
@@ -257,9 +258,9 @@ async def test_login_emite_evento_auditoria(
         )
     )
     evento = result.scalars().first()
-    assert evento is not None, (
-        f"No se encontró evento '{AuditAction.LOGIN_OK}' para usuario {user_id}"
-    )
+    assert (
+        evento is not None
+    ), f"No se encontró evento '{AuditAction.LOGIN_OK}' para usuario {user_id}"
 
 
 # ---------------------------------------------------------------------------
@@ -520,7 +521,7 @@ async def test_change_password_invalida_otras_sesiones(
     )
     assert resp2.status_code == 200
     refresh_token_2 = resp2.json()["refresh_token"]
-    access_token_2 = resp2.json()["access_token"]
+    resp2.json()["access_token"]
 
     # Verificar que refresh_token_2 funciona antes del cambio
     resp_pre = await client.post(
@@ -529,7 +530,7 @@ async def test_change_password_invalida_otras_sesiones(
     )
     assert resp_pre.status_code == 200
     # El refresh rotó; usamos el nuevo
-    new_refresh_2 = resp_pre.json()["refresh_token"]
+    resp_pre.json()["refresh_token"]
     new_access_2 = resp_pre.json()["access_token"]
 
     # Cambiar contraseña desde sesión 2 (sin cookie de refresh → current_refresh_hash="")
@@ -802,13 +803,11 @@ async def test_admin_cargar_ticket_cifra_aes256(
     data = resp.json()
 
     # FastAPI usa by_alias=True → la clave en JSON es "ticket_ultimos_4" (el alias)
-    assert data.get("ticket_ultimos_4") == ticket_plain[-4:], (
-        f"Se esperaba ticket_ultimos_4='{ticket_plain[-4:]}', got {data}"
-    )
+    assert (
+        data.get("ticket_ultimos_4") == ticket_plain[-4:]
+    ), f"Se esperaba ticket_ultimos_4='{ticket_plain[-4:]}', got {data}"
     # El ticket completo NO debe estar en la respuesta
-    assert ticket_plain not in str(data), (
-        "El ticket en claro nunca debe estar en la respuesta"
-    )
+    assert ticket_plain not in str(data), "El ticket en claro nunca debe estar en la respuesta"
 
     # Verificar en BD que ticket_cifrado != ticket_plain
     empresa_result = await db_session.execute(
@@ -821,12 +820,12 @@ async def test_admin_cargar_ticket_cifra_aes256(
     )
     ticket_db = ticket_result.scalar_one()
 
-    assert ticket_db.ticket_cifrado != ticket_plain, (
-        "El ticket se almacenó en texto claro — debe estar cifrado"
-    )
-    assert len(ticket_db.ticket_cifrado) > len(ticket_plain), (
-        "El valor cifrado debería ser más largo que el plaintext (nonce + ciphertext)"
-    )
+    assert (
+        ticket_db.ticket_cifrado != ticket_plain
+    ), "El ticket se almacenó en texto claro — debe estar cifrado"
+    assert len(ticket_db.ticket_cifrado) > len(
+        ticket_plain
+    ), "El valor cifrado debería ser más largo que el plaintext (nonce + ciphertext)"
 
     # Limpiar el ticket antes del teardown para evitar FK violation
     # (tickets_api.cargado_por_admin_id → admin_user, con ON DELETE SET NULL
@@ -884,13 +883,13 @@ async def test_admin_ticket_nunca_expuesto_completo(
     resp_text = resp.text
 
     # El ticket en claro nunca debe aparecer en ninguna respuesta (regla #2)
-    assert ticket_plain not in resp_text, (
-        "El ticket en claro fue expuesto en la respuesta del diagnóstico"
-    )
+    assert (
+        ticket_plain not in resp_text
+    ), "El ticket en claro fue expuesto en la respuesta del diagnóstico"
     # El valor cifrado base64 tampoco debe aparecer
-    assert ticket_cifrado_val not in resp_text, (
-        "El ticket cifrado fue expuesto en la respuesta del diagnóstico"
-    )
+    assert (
+        ticket_cifrado_val not in resp_text
+    ), "El ticket cifrado fue expuesto en la respuesta del diagnóstico"
 
     # Limpiar ticket antes del teardown
     ticket_to_del = await db_session.get(TicketApi, ticket_id)
@@ -936,12 +935,10 @@ async def test_admin_impersonar_registra_auditoria(
         )
     )
     evento = result.scalars().first()
-    assert evento is not None, (
-        "No se encontró evento de auditoría 'admin.cuenta.impersonada'"
-    )
-    assert evento.recurso_id == str(target.id), (
-        f"recurso_id debería ser {target.id}, got {evento.recurso_id}"
-    )
+    assert evento is not None, "No se encontró evento de auditoría 'admin.cuenta.impersonada'"
+    assert evento.recurso_id == str(
+        target.id
+    ), f"recurso_id debería ser {target.id}, got {evento.recurso_id}"
 
 
 # ---------------------------------------------------------------------------
@@ -976,9 +973,9 @@ async def test_sin_token_todos_los_endpoints_protegidos(
 
     for method, path in endpoints:
         resp = await client.request(method, path)
-        assert resp.status_code == 401, (
-            f"Se esperaba 401 en {method} {path} sin token, got {resp.status_code}"
-        )
+        assert (
+            resp.status_code == 401
+        ), f"Se esperaba 401 en {method} {path} sin token, got {resp.status_code}"
 
 
 @pytest.mark.e2e

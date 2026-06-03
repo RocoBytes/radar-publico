@@ -7,8 +7,6 @@ Se usan SimpleNamespace para simular ORM objects sin DB.
 from types import SimpleNamespace
 from typing import Any
 
-import pytest
-
 from app.models.interes import InteresTipo
 from app.services.scoring.relevance import (
     _comp_keywords,
@@ -17,7 +15,6 @@ from app.services.scoring.relevance import (
     _comp_unspsc,
     calcular_score,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers de fixtures

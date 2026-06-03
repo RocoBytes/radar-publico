@@ -54,9 +54,7 @@ async def empresa_con_usuario(
         with_empresa=True,
         razon_social="Radar Test SpA",
     )
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == user.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == user.id))
     empresa: Empresa = result.scalar_one()
     return user, empresa
 
@@ -74,9 +72,7 @@ async def segunda_empresa_con_usuario(
         with_empresa=True,
         razon_social="Otra Empresa SpA",
     )
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == user.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == user.id))
     empresa: Empresa = result.scalar_one()
     return user, empresa
 

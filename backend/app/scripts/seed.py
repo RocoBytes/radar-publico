@@ -247,6 +247,76 @@ async def _seed_unspsc() -> int:
 
 
 # ---------------------------------------------------------------------------
+# Proveedor de prueba (solo dev)
+# ---------------------------------------------------------------------------
+
+
+async def _seed_proveedor_test() -> None:
+    """Crea un usuario proveedor + empresa para desarrollo local.
+
+    Credenciales fijas para facilitar el testing manual. No ejecutar en prod.
+    """
+    from sqlalchemy import select
+
+    from app.core.security import hash_password
+    from app.db.session import AsyncSessionLocal
+    from app.models.empresa import Empresa
+    from app.models.enums import UserRole, UserStatus
+    from app.models.usuario import Usuario
+
+    email = "proveedor@example.com"
+    password = "test1234"
+    rut = "76543210-9"
+    razon_social = "Empresa de Prueba SpA"
+
+    async with AsyncSessionLocal() as session:
+        existente = (
+            await session.execute(select(Usuario).where(Usuario.email == email))
+        ).scalar_one_or_none()
+
+        if existente is not None:
+            print(f"  [OK] Proveedor de prueba ya existe ({email}).")
+            return
+
+        # Si hay una empresa huérfana con el mismo RUT (de un run fallido), la borramos
+        empresa_huerfana = (
+            await session.execute(select(Empresa).where(Empresa.rut == rut))
+        ).scalar_one_or_none()
+        if empresa_huerfana is not None:
+            await session.delete(empresa_huerfana)
+            await session.flush()
+
+        usuario = Usuario(
+            email=email,
+            password_hash=hash_password(password),
+            rol=UserRole.proveedor,
+            status=UserStatus.active,
+            must_change_password=False,
+        )
+        session.add(usuario)
+        await session.flush()
+
+        empresa = Empresa(
+            usuario_id=usuario.id,
+            rut=rut,
+            razon_social=razon_social,
+        )
+        session.add(empresa)
+        await session.commit()
+
+    print()
+    print("=" * 60)
+    print("  PROVEEDOR DE PRUEBA CREADO")
+    print("=" * 60)
+    print(f"  Email    : {email}")
+    print(f"  Password : {password}")
+    print(f"  RUT      : {rut}")
+    print(f"  Empresa  : {razon_social}")
+    print("=" * 60)
+    print()
+
+
+# ---------------------------------------------------------------------------
 # Orquestador
 # ---------------------------------------------------------------------------
 
@@ -254,14 +324,19 @@ async def _seed_unspsc() -> int:
 async def _main(args: argparse.Namespace) -> None:
     hacer_admin = args.admin or args.all
     hacer_catalogos = args.catalogos or args.all
+    hacer_dev = getattr(args, "dev", False)
 
-    if not hacer_admin and not hacer_catalogos:
-        print("Nada que hacer. Usá --admin, --catalogos o --all.", file=sys.stderr)
+    if not hacer_admin and not hacer_catalogos and not hacer_dev:
+        print("Nada que hacer. Usá --admin, --catalogos, --all o --dev.", file=sys.stderr)
         sys.exit(1)
 
     if hacer_admin:
         print("→ Creando admin...")
         await _seed_admin()
+
+    if hacer_dev:
+        print("→ Creando proveedor de prueba...")
+        await _seed_proveedor_test()
 
     if hacer_catalogos:
         print("→ Cargando regiones...")
@@ -297,6 +372,11 @@ def main() -> None:
         "--catalogos",
         action="store_true",
         help="Cargar regiones, comunas y UNSPSC",
+    )
+    parser.add_argument(
+        "--dev",
+        action="store_true",
+        help="Crear proveedor de prueba (solo desarrollo local)",
     )
     args = parser.parse_args()
     asyncio.run(_main(args))

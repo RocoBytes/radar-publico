@@ -30,9 +30,7 @@ async def _get_empresa_o_404(
     current_user: CurrentUser,
 ) -> Empresa:
     """Carga la empresa del usuario o lanza 404 si no existe."""
-    result = await db.execute(
-        select(Empresa).where(Empresa.usuario_id == current_user.id)
-    )
+    result = await db.execute(select(Empresa).where(Empresa.usuario_id == current_user.id))
     empresa = result.scalar_one_or_none()
     if empresa is None:
         raise HTTPException(
@@ -54,9 +52,7 @@ async def listar_intereses(
     empresa = await _get_empresa_o_404(db, current_user)
 
     result = await db.execute(
-        select(Interes)
-        .where(Interes.empresa_id == empresa.id)
-        .order_by(Interes.created_at.desc())
+        select(Interes).where(Interes.empresa_id == empresa.id).order_by(Interes.created_at.desc())
     )
     intereses = list(result.scalars().all())
 
@@ -96,16 +92,13 @@ async def crear_interes(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=msg)
 
     # Verificar límite de intereses por empresa
-    count_result = await db.execute(
-        select(func.count()).where(Interes.empresa_id == empresa.id)
-    )
+    count_result = await db.execute(select(func.count()).where(Interes.empresa_id == empresa.id))
     total = count_result.scalar_one()
     if total >= _MAX_INTERESES_POR_EMPRESA:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"Se alcanzó el límite de {_MAX_INTERESES_POR_EMPRESA} "
-                "intereses por empresa"
+                f"Se alcanzó el límite de {_MAX_INTERESES_POR_EMPRESA} " "intereses por empresa"
             ),
         )
 

@@ -67,12 +67,8 @@ class DocumentoBase(Base):
     texto_extraido: Mapped[str | None] = mapped_column(Text, nullable=True)
     hash_contenido: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_mensaje: Mapped[str | None] = mapped_column(Text, nullable=True)
-    descargado_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    procesado_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    descargado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    procesado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )

@@ -40,9 +40,7 @@ class PreferenciasNotificaciones(Base):
     )
 
     # Canal email
-    email_activo: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
-    )
+    email_activo: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     # Mapeado como String(20) porque la BD usa varchar(20), no un tipo ENUM de PG
     email_frecuencia: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default=text("'instantaneo'")
@@ -56,9 +54,7 @@ class PreferenciasNotificaciones(Base):
     whatsapp_solo_criticas: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true")
     )
-    whatsapp_score_minimo: Mapped[int | None] = mapped_column(
-        SmallInteger, nullable=True
-    )
+    whatsapp_score_minimo: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     whatsapp_pausado_hasta: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

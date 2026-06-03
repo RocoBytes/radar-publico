@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 _COLOR_PRIMARIO = RGBColor(0x1E, 0x40, 0xAF)  # blue-800
 
 
-def generar_docx_borrador(borrador: "BorradorPropuesta") -> io.BytesIO:
+def generar_docx_borrador(borrador: BorradorPropuesta) -> io.BytesIO:
     """Genera un documento DOCX a partir del borrador de propuesta técnica.
 
     Devuelve un buffer listo para ser enviado como descarga HTTP.

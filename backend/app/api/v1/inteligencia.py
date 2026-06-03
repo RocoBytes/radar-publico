@@ -65,9 +65,7 @@ async def obtener_inteligencia(
     # 2. Nombre del organismo
     organismo: Organismo | None = (
         await db.execute(
-            select(Organismo).where(
-                Organismo.codigo_organismo == licitacion.codigo_organismo
-            )
+            select(Organismo).where(Organismo.codigo_organismo == licitacion.codigo_organismo)
         )
     ).scalar_one_or_none()
     organismo_nombre = organismo.nombre if organismo is not None else None
@@ -144,12 +142,9 @@ async def obtener_inteligencia(
     proveedores_unicos: int = int(precios_row.proveedores_unicos or 0)
 
     # 6. Top competidores en el mismo rubro UNSPSC (últimos 2 años)
-    unspsc_de_esta_lic = (
-        select(LicitacionItem.unspsc_codigo)
-        .where(
-            LicitacionItem.licitacion_codigo == codigo,
-            LicitacionItem.unspsc_codigo.is_not(None),
-        )
+    unspsc_de_esta_lic = select(LicitacionItem.unspsc_codigo).where(
+        LicitacionItem.licitacion_codigo == codigo,
+        LicitacionItem.unspsc_codigo.is_not(None),
     )
     lics_mismo_rubro = (
         select(LicitacionItem.licitacion_codigo)

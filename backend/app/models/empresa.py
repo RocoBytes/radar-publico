@@ -142,9 +142,7 @@ class Empresa(Base):
         back_populates="empresa",
         cascade="all, delete-orphan",
     )
-    preferencias_notificaciones: Mapped[
-        "PreferenciasNotificaciones | None"
-    ] = relationship(
+    preferencias_notificaciones: Mapped["PreferenciasNotificaciones | None"] = relationship(
         "PreferenciasNotificaciones",
         back_populates="empresa",
         uselist=False,
@@ -165,7 +163,4 @@ class Empresa(Base):
         return self.ticket is not None
 
     def __repr__(self) -> str:
-        return (
-            f"<Empresa id={self.id} rut={self.rut!r} "
-            f"razon_social={self.razon_social!r}>"
-        )
+        return f"<Empresa id={self.id} rut={self.rut!r} " f"razon_social={self.razon_social!r}>"

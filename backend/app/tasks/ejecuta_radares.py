@@ -90,9 +90,7 @@ async def _ejecutar_radar(radar_id: UUID) -> dict[str, int]:
 
         # Aplicar filtros del radar
         if filtros.get("q"):
-            stmt = stmt.where(
-                Licitacion.nombre.ilike(f"%{filtros['q']}%")
-            )
+            stmt = stmt.where(Licitacion.nombre.ilike(f"%{filtros['q']}%"))
         if filtros.get("estado"):
             # El radar puede filtrar por un estado específico (override de publicada)
             try:
@@ -111,9 +109,7 @@ async def _ejecutar_radar(radar_id: UUID) -> dict[str, int]:
                 exists(
                     select(LicitacionItem.id).where(
                         LicitacionItem.licitacion_codigo == Licitacion.codigo,
-                        LicitacionItem.unspsc_codigo.like(
-                            f"{filtros['unspsc_codigo']}%"
-                        ),
+                        LicitacionItem.unspsc_codigo.like(f"{filtros['unspsc_codigo']}%"),
                     )
                 )
             )
@@ -214,9 +210,7 @@ async def _fan_out() -> dict[str, Any]:
     from app.models.radar import Radar
 
     async with AsyncSessionLocal() as session:
-        resultado = await session.execute(
-            select(Radar.id).where(Radar.activo.is_(True))
-        )
+        resultado = await session.execute(select(Radar.id).where(Radar.activo.is_(True)))
         radar_ids = [str(rid) for (rid,) in resultado.all()]
 
     for rid in radar_ids:

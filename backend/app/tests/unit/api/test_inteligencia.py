@@ -13,7 +13,6 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 import uuid
 
-from httpx import AsyncClient
 import pytest
 import pytest_asyncio
 from sqlalchemy import delete
@@ -26,6 +25,7 @@ from app.models.organismo import Organismo
 from app.models.proveedor import Proveedor
 
 if TYPE_CHECKING:
+    from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
 
 # ---------------------------------------------------------------------------
@@ -250,9 +250,9 @@ async def test_precio_min_max_calculados_correctamente(
 
     assert data["precio_min_organismo"] is not None
     assert data["precio_max_organismo"] is not None
-    assert data["precio_min_organismo"] < data["precio_max_organismo"], (
-        "precio_min debe ser menor que precio_max"
-    )
+    assert (
+        data["precio_min_organismo"] < data["precio_max_organismo"]
+    ), "precio_min debe ser menor que precio_max"
     assert abs(data["precio_min_organismo"] - 500_000.0) < 1.0
     assert abs(data["precio_max_organismo"] - 1_500_000.0) < 1.0
 
@@ -300,9 +300,9 @@ async def test_top_proveedores_ordenados_por_count_desc(
 
     top = data["top_proveedores"]
     assert len(top) >= 2, "Debe haber al menos 2 proveedores en top"
-    assert top[0]["licitaciones_ganadas"] >= top[1]["licitaciones_ganadas"], (
-        "El primero debe tener igual o más licitaciones ganadas que el segundo"
-    )
+    assert (
+        top[0]["licitaciones_ganadas"] >= top[1]["licitaciones_ganadas"]
+    ), "El primero debe tener igual o más licitaciones ganadas que el segundo"
     assert top[0]["rut"] == rut_frecuente, (
         f"El proveedor con 2 wins debe aparecer primero, "
         f"actual: {top[0]['rut']} (esperado {rut_frecuente})"
@@ -344,9 +344,7 @@ async def test_total_licitaciones_excluye_la_actual(
     # El endpoint usa WHERE codigo != codigo_ref Y monto IS NOT NULL.
     # La licitación de referencia nunca debe estar en el conteo.
     total = data["total_licitaciones_organismo"]
-    assert total == 1, (
-        f"total_licitaciones_organismo debe ser 1 (solo la otra), obtenido: {total}"
-    )
+    assert total == 1, f"total_licitaciones_organismo debe ser 1 (solo la otra), obtenido: {total}"
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +387,10 @@ async def test_competidores_rubro_con_match_unspsc(
     make_user: Any,
     db_session: AsyncSession,
 ) -> None:
-    """Licitación con items UNSPSC + otra licitación con mismo UNSPSC adjudicada → competidor aparece."""
+    """Licitación con items UNSPSC + otra licitación con mismo UNSPSC adjudicada.
+
+    El competidor debe aparecer.
+    """
     user = await make_user(email=f"u{_uid()}@test.cl")
     org_codigo = abs(uuid.uuid4().int) % 90_000 + 10_000
     codigo_ref = _codigo_lic("UNSPSC_REF")
@@ -397,7 +398,6 @@ async def test_competidores_rubro_con_match_unspsc(
     rut_competidor = _rut_prov()
 
     # UNSPSC real de test: usar un código que no requiere FK (unspsc_codigo nullable)
-    unspsc = "43211503"  # FK nullable — si no existe en catálogo se guarda como None
 
     db_session.add(_make_organismo(org_codigo))
     # Licitación de referencia con un item que tiene unspsc_codigo
@@ -429,9 +429,7 @@ async def test_competidores_rubro_con_match_unspsc(
     )
     db_session.add(item_ref)
     db_session.add(item_comp)
-    db_session.add(
-        _make_adjudicacion(codigo_comp, rut_competidor, monto=300_000.0)
-    )
+    db_session.add(_make_adjudicacion(codigo_comp, rut_competidor, monto=300_000.0))
     await db_session.commit()
 
     resp = await client.get(
@@ -445,6 +443,6 @@ async def test_competidores_rubro_con_match_unspsc(
     # Esto valida que el endpoint maneja correctamente licitaciones sin UNSPSC
     assert isinstance(data["top_competidores_rubro"], list)
     # No puede tener competidores si el UNSPSC de referencia es None
-    assert data["top_competidores_rubro"] == [], (
-        "Sin UNSPSC en la licitacion de referencia → no debe haber competidores"
-    )
+    assert (
+        data["top_competidores_rubro"] == []
+    ), "Sin UNSPSC en la licitacion de referencia → no debe haber competidores"

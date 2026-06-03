@@ -13,7 +13,7 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import exists, or_, select
+from sqlalchemy import exists, select
 import structlog
 
 from app.celery_app import celery_app
@@ -34,7 +34,7 @@ _DEDUP_DIAS = 30  # no re-notificar si ya existe notif en los últimos 30 días
 async def _run() -> dict[str, int]:
     from app.db.session import AsyncSessionLocal
     from app.models.empresa import Empresa
-    from app.models.licitacion import Licitacion, LicitacionItem
+    from app.models.licitacion import Licitacion
     from app.models.notificacion import Notificacion
     from app.models.ticket import TicketApi
 

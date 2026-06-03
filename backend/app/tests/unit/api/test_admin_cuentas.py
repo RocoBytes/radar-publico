@@ -13,15 +13,14 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-import pytest_asyncio
-from httpx import AsyncClient
-from sqlalchemy import delete
 
 from app.core.security import create_access_token, decode_access_token
-from app.models.enums import TicketStatus, UserRole, UserStatus
+from app.models.enums import TicketStatus, UserRole
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -62,6 +61,7 @@ async def test_impersonar_retorna_token(
     assert payload.sub == str(proveedor.id)
 
     import jwt
+
     from app.config import settings
 
     raw = jwt.decode(data["access_token"], settings.jwt_secret, algorithms=[settings.jwt_algorithm])
@@ -152,11 +152,8 @@ async def test_diagnostico_con_ticket(
     proveedor = await make_user(email="prov_diag2@test.cl")
 
     from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
 
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == proveedor.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == proveedor.id))
     empresa = result.scalar_one()
 
     ticket = TicketApi(
@@ -194,10 +191,11 @@ async def test_diagnostico_test_conexion_mockeado(
     db_session: AsyncSession,
 ) -> None:
     """test_conexion=True llama al cliente de ChileCompra (mockeado)."""
+    from sqlalchemy import select
+
     from app.core.encryption import encrypt_ticket
     from app.models.empresa import Empresa
     from app.models.ticket import TicketApi
-    from sqlalchemy import select
 
     admin = await make_user(
         email="admin_diag3@test.cl",
@@ -206,9 +204,7 @@ async def test_diagnostico_test_conexion_mockeado(
     )
     proveedor = await make_user(email="prov_diag3@test.cl")
 
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == proveedor.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == proveedor.id))
     empresa = result.scalar_one()
 
     ticket = TicketApi(
@@ -222,17 +218,17 @@ async def test_diagnostico_test_conexion_mockeado(
     db_session.add(ticket)
     await db_session.commit()
 
-    mock_lista = AsyncMock(return_value=None)
+    AsyncMock(return_value=None)
 
     try:
         # El target correcto: donde la clase vive, no donde se importa lazy
         with patch(
             "app.services.chilecompra.client.MercadoPublicoClient",
-        ) as MockClient:
+        ) as mock_client_cls:
             mock_instance = AsyncMock()
             mock_instance.listar_licitaciones_por_estado = AsyncMock(return_value=None)
-            MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_instance)
-            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_instance)
+            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             resp = await client.get(
                 f"/api/admin/cuentas/{proveedor.id}/ticket/diagnostico?test_conexion=true",

@@ -20,11 +20,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 import uuid
-from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,7 +52,7 @@ def _rut() -> str:
 
 
 @pytest_asyncio.fixture
-async def empresa_con_pipeline(db_session: "AsyncSession") -> dict[str, object]:  # type: ignore[misc]
+async def empresa_con_pipeline(db_session: AsyncSession) -> dict[str, object]:  # type: ignore[misc]
     """Crea usuario + empresa + licitacion + pipeline_item activo."""
     from app.db.session import AsyncSessionLocal
     from app.models.empresa import Empresa
@@ -118,9 +117,9 @@ async def empresa_con_pipeline(db_session: "AsyncSession") -> dict[str, object]:
         # Eliminar licitacion explicitamente (cascade puede no aplicar si no hay FK empresa)
         from app.models.licitacion import Licitacion as Lic
 
-        l = await session.get(Lic, ids["licitacion_codigo"])
-        if l is not None:
-            await session.delete(l)
+        lic = await session.get(Lic, ids["licitacion_codigo"])
+        if lic is not None:
+            await session.delete(lic)
         await session.commit()
 
 
@@ -137,8 +136,7 @@ async def _limpieza_notificaciones(  # type: ignore[misc]
     async with AsyncSessionLocal() as session:
         await session.execute(
             delete(Notificacion).where(
-                Notificacion.licitacion_codigo
-                == str(empresa_con_pipeline["licitacion_codigo"])
+                Notificacion.licitacion_codigo == str(empresa_con_pipeline["licitacion_codigo"])
             )
         )
         await session.commit()
@@ -192,7 +190,6 @@ async def test_task_idempotente(
 ) -> None:
     """Llamar emit_state_change_notifications dos veces → segunda crea 0 notifs."""
     from app.db.session import AsyncSessionLocal
-    from app.models.notificacion import Notificacion
     from app.services.notifications.state_change import emit_state_change_notifications
 
     licitacion_codigo = str(empresa_con_pipeline["licitacion_codigo"])

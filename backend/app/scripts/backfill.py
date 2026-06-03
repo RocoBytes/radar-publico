@@ -411,9 +411,7 @@ def main() -> None:
             "Esto puede consumir mucha cuota. Considerá ejecutar en múltiples noches."
         )
 
-    print(
-        f"{'DRY RUN — ' if args.dry_run else ''}Backfill histórico: {args.months} meses"
-    )
+    print(f"{'DRY RUN — ' if args.dry_run else ''}Backfill histórico: {args.months} meses")
     if not args.dry_run:
         print(
             "⚠  Regla de oro #17: ejecutar solo en horario nocturno (22:00-07:00 CLT)\n"

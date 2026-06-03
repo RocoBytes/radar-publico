@@ -141,9 +141,7 @@ async def test_embed_batch_rate_limit() -> None:
     """Error con 'rate limit' en el mensaje → EmbeddingRateLimitError."""
     textos = ["texto de prueba"]
     mock_client = AsyncMock()
-    mock_client.embed = AsyncMock(
-        side_effect=Exception("rate limit exceeded, retry after 60s")
-    )
+    mock_client.embed = AsyncMock(side_effect=Exception("rate limit exceeded, retry after 60s"))
 
     with patch("app.services.llm.voyage.voyageai") as mock_voyage:
         mock_voyage.AsyncClient.return_value = mock_client

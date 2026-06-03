@@ -21,7 +21,6 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
 from sqlalchemy import delete, select
 
 from app.core.security import create_access_token
@@ -29,6 +28,8 @@ from app.models.enums import UserRole
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from httpx import AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -50,9 +51,7 @@ async def _limpieza_notifs() -> None:  # type: ignore[misc]
     async def _borrar() -> None:
         async with AsyncSessionLocal() as session:
             await session.execute(
-                delete(Notificacion).where(
-                    Notificacion.titulo.like("E2E-SPRINT6%")
-                )
+                delete(Notificacion).where(Notificacion.titulo.like("E2E-SPRINT6%"))
             )
             await session.commit()
 
@@ -104,11 +103,11 @@ async def empresa_test() -> dict[str, Any]:  # type: ignore[misc]
 
     yield ids  # type: ignore[misc]
 
-    from app.db.session import AsyncSessionLocal as C
-    from app.models.usuario import Usuario as U
+    from app.db.session import AsyncSessionLocal
+    from app.models.usuario import Usuario
 
-    async with C() as session:
-        u = await session.get(U, ids["usuario_id"])
+    async with AsyncSessionLocal() as session:
+        u = await session.get(Usuario, ids["usuario_id"])
         if u is not None:
             await session.delete(u)
             await session.commit()
@@ -244,9 +243,7 @@ async def test_diagnostico_llamadas_hoy_cuenta_registros(
     )
     proveedor = await make_user(email="e2e_quota_prov@test.cl")
 
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == proveedor.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == proveedor.id))
     empresa = result.scalar_one()
 
     ticket = TicketApi(
@@ -260,7 +257,7 @@ async def test_diagnostico_llamadas_hoy_cuenta_registros(
     db_session.add(ticket)
     await db_session.commit()
 
-    LLAMADAS = 5
+    llamadas = 5
     logs = [
         ApiQuotaLog(
             ticket_id=ticket.id,
@@ -269,7 +266,7 @@ async def test_diagnostico_llamadas_hoy_cuenta_registros(
             metodo="GET",
             status_code=200,
         )
-        for _ in range(LLAMADAS)
+        for _ in range(llamadas)
     ]
     db_session.add_all(logs)
     await db_session.commit()
@@ -280,7 +277,7 @@ async def test_diagnostico_llamadas_hoy_cuenta_registros(
             headers=_headers(str(admin.id)),
         )
         assert resp.status_code == 200
-        assert resp.json()["llamadas_hoy"] == LLAMADAS
+        assert resp.json()["llamadas_hoy"] == llamadas
     finally:
         for log in logs:
             await db_session.delete(log)

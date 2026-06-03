@@ -2,7 +2,7 @@
 
 Cubre:
   Epic 5.3 (US-5.3)    — Radares (CRUD, límites, multi-tenant)
-  Epic 3   (US-3.1–3.5)— Onboarding de empresa
+  Epic 3   (US-3.1-3.5)-- Onboarding de empresa
   Epic 3.4 (US-3.4)    — Intereses comerciales
   Epic 9.2 (US-9.2)    — Feed de renovaciones de contratos
   Epic 9.1 (US-9.1)    — Plan anual de compras
@@ -26,16 +26,12 @@ Convenciones:
 
 from __future__ import annotations
 
-import uuid
-from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
+import uuid
 
 import pytest
-import pytest_asyncio
-from httpx import AsyncClient
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.empresa import Empresa
 from app.models.enums import LicitacionEstado, UserRole, UserStatus
@@ -44,6 +40,11 @@ from app.models.licitacion import Licitacion
 from app.models.radar import Radar
 from app.tests.e2e.conftest import auth_headers
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from httpx import AsyncClient
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 # ===========================================================================
 # Epic 5.3 — Radares (US-5.3)
@@ -110,9 +111,7 @@ async def test_radar_limite_20_cumple_spec(
             f"pero se obtuvo {resp.status_code}: {resp.text}"
         )
     finally:
-        await db_session.execute(
-            delete(Radar).where(Radar.empresa_id == empresa.id)
-        )
+        await db_session.execute(delete(Radar).where(Radar.empresa_id == empresa.id))
         await db_session.commit()
 
 
@@ -267,13 +266,9 @@ async def test_radares_multi_tenant_empresa_b_no_ve_radares_a(
         lista_b = await client.get("/api/v1/radares", headers=headers_b)
         assert lista_b.status_code == 200
         ids_b = [r["id"] for r in lista_b.json()["items"]]
-        assert radar_id_a not in ids_b, (
-            "Empresa B no debe ver los radares de empresa A"
-        )
+        assert radar_id_a not in ids_b, "Empresa B no debe ver los radares de empresa A"
     finally:
-        await db_session.execute(
-            delete(Radar).where(Radar.empresa_id == empresa_a.id)
-        )
+        await db_session.execute(delete(Radar).where(Radar.empresa_id == empresa_a.id))
         await db_session.commit()
 
 
@@ -321,9 +316,7 @@ async def test_onboarding_wizard_bloquea_dashboard(
     headers = auth_headers(user.id)
 
     # Asegurar que onboarding_completado=False
-    result = await db_session.execute(
-        select(Empresa).where(Empresa.usuario_id == user.id)
-    )
+    result = await db_session.execute(select(Empresa).where(Empresa.usuario_id == user.id))
     empresa = result.scalar_one()
     empresa.onboarding_completado = False
     await db_session.commit()
@@ -482,7 +475,7 @@ async def test_interes_crear_y_listar(
 ) -> None:
     """POST interes keyword → GET /intereses → aparece en la lista."""
     headers = proveedor_activo["headers"]
-    empresa = proveedor_activo["empresa"]
+    proveedor_activo["empresa"]
 
     resp = await client.post(
         "/api/v1/intereses",
@@ -499,9 +492,7 @@ async def test_interes_crear_y_listar(
         valores = [i["valor"] for i in lista.json()["items"]]
         assert "mantencion CCTV" in valores
     finally:
-        await db_session.execute(
-            delete(Interes).where(Interes.id == uuid.UUID(interes_id))
-        )
+        await db_session.execute(delete(Interes).where(Interes.id == uuid.UUID(interes_id)))
         await db_session.commit()
 
 
@@ -528,9 +519,7 @@ async def test_interes_duplicado_rechazado(
             f"{resp2.status_code}: {resp2.text}"
         )
     finally:
-        await db_session.execute(
-            delete(Interes).where(Interes.id == uuid.UUID(interes_id))
-        )
+        await db_session.execute(delete(Interes).where(Interes.id == uuid.UUID(interes_id)))
         await db_session.commit()
 
 
@@ -552,9 +541,7 @@ async def test_interes_eliminar(
     assert resp.status_code == 201, resp.text
     interes_id = resp.json()["id"]
 
-    del_resp = await client.delete(
-        f"/api/v1/intereses/{interes_id}", headers=headers
-    )
+    del_resp = await client.delete(f"/api/v1/intereses/{interes_id}", headers=headers)
     assert del_resp.status_code == 204, del_resp.text
 
     lista = await client.get("/api/v1/intereses", headers=headers)
@@ -595,9 +582,7 @@ async def test_interes_ajeno_no_eliminar(
     headers_b = auth_headers(user_b.id)
 
     try:
-        resp = await client.delete(
-            f"/api/v1/intereses/{interes.id}", headers=headers_b
-        )
+        resp = await client.delete(f"/api/v1/intereses/{interes.id}", headers=headers_b)
         assert resp.status_code in (403, 404), (
             f"Empresa B no debería poder eliminar interés de empresa A. "
             f"Se obtuvo {resp.status_code}: {resp.text}"
@@ -621,7 +606,10 @@ async def test_renovaciones_licitacion_renovable_dentro_de_6_meses(
     make_licitacion: Callable[..., Any],
     db_session: AsyncSession,
 ) -> None:
-    """Licitación adjudicada, renovable, con fecha_estimada_termino en 3 meses → aparece en /futuro/renovaciones."""
+    """Licitación adjudicada, renovable, con fecha_estimada_termino en 3 meses.
+
+    Debe aparecer en /futuro/renovaciones.
+    """
     headers = proveedor_activo["headers"]
 
     fecha_termino = datetime.now(UTC) + timedelta(days=90)  # 3 meses
@@ -687,7 +675,10 @@ async def test_renovaciones_fuera_del_horizonte_excluida(
     make_licitacion: Callable[..., Any],
     db_session: AsyncSession,
 ) -> None:
-    """Licitación renovable pero fecha_estimada_termino en 8 meses → fuera del horizonte de 6 meses."""
+    """Licitación renovable pero fecha_estimada_termino en 8 meses.
+
+    Debe quedar fuera del horizonte de 6 meses.
+    """
     headers = proveedor_activo["headers"]
 
     # El endpoint usa meses_horizonte=6 por defecto (6 * 30 = 180 días aprox).
@@ -767,9 +758,7 @@ async def test_renovaciones_paginacion(
     data = resp.json()
     assert data["page_size"] == 1
     assert len(data["items"]) == 1
-    assert data["total"] >= 2, (
-        f"Se esperaban al menos 2 renovaciones pero total={data['total']}"
-    )
+    assert data["total"] >= 2, f"Se esperaban al menos 2 renovaciones pero total={data['total']}"
 
 
 # ===========================================================================
@@ -837,9 +826,10 @@ async def test_patrones_estacionales_no_implementado(
     """GET /futuro/patrones → documenta que el endpoint no existe aún (US-9.3)."""
     headers = proveedor_activo["headers"]
     resp = await client.get("/api/v1/futuro/patrones", headers=headers)
-    assert resp.status_code not in (404, 405), (
-        f"US-9.3 Patrones Estacionales sigue sin implementar (status={resp.status_code})"
-    )
+    assert resp.status_code not in (
+        404,
+        405,
+    ), f"US-9.3 Patrones Estacionales sigue sin implementar (status={resp.status_code})"
 
 
 # ===========================================================================
@@ -866,14 +856,12 @@ async def test_vista_por_radar_no_existe(
     ignore el parámetro (lo que también indicaría que no está implementado).
     """
     headers = proveedor_activo["headers"]
-    resp = await client.get(
-        "/api/v1/pipeline", params={"groupby": "radar"}, headers=headers
-    )
+    resp = await client.get("/api/v1/pipeline", params={"groupby": "radar"}, headers=headers)
     # Si devolviese una respuesta agrupada por radar, sería el comportamiento esperado
     # de la spec — pero en v1 no existe, así que este test falla (xfail)
-    assert resp.status_code == 200 and "radar" in str(resp.json()), (
-        f"US-8.2 Vista por radar no implementada (status={resp.status_code})"
-    )
+    assert resp.status_code == 200 and "radar" in str(
+        resp.json()
+    ), f"US-8.2 Vista por radar no implementada (status={resp.status_code})"
 
 
 # ===========================================================================
@@ -906,9 +894,9 @@ async def test_catalogos_regiones(
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert "items" in data
-    assert len(data["items"]) == 16, (
-        f"Chile tiene 16 regiones, pero se obtuvieron {len(data['items'])}"
-    )
+    assert (
+        len(data["items"]) == 16
+    ), f"Chile tiene 16 regiones, pero se obtuvieron {len(data['items'])}"
     # Cada ítem debe tener código y nombre
     for item in data["items"]:
         assert "codigo" in item

@@ -53,7 +53,9 @@ async def listar_checklist(
     if not settings.feature_pipeline_checklist:
         raise _FLAG_APAGADO
 
-    items = await checklist_service.get_items(db, pipeline_item_id, empresa.id, limit=limit, offset=offset)
+    items = await checklist_service.get_items(
+        db, pipeline_item_id, empresa.id, limit=limit, offset=offset
+    )
     return [ChecklistItemResponse.model_validate(i) for i in items]
 
 
@@ -107,9 +109,7 @@ async def actualizar_checklist_item(
     if not settings.feature_pipeline_checklist:
         raise _FLAG_APAGADO
 
-    item = await checklist_service.update_item(
-        db, pipeline_item_id, item_id, empresa.id, data
-    )
+    item = await checklist_service.update_item(db, pipeline_item_id, item_id, empresa.id, data)
     return ChecklistItemResponse.model_validate(item)
 
 
@@ -160,6 +160,4 @@ async def bootstrap_checklist_desde_analisis(
     if not settings.feature_pipeline_checklist:
         raise _FLAG_APAGADO
 
-    return await checklist_service.bootstrap_from_analysis(
-        db, pipeline_item_id, empresa.id
-    )
+    return await checklist_service.bootstrap_from_analysis(db, pipeline_item_id, empresa.id)

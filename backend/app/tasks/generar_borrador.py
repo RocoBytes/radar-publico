@@ -20,8 +20,8 @@ Reglas de oro que aplican:
 """
 
 import asyncio
-import json
 from datetime import UTC, datetime
+import json
 from typing import Any
 
 import structlog
@@ -150,7 +150,9 @@ async def _run(codigo: str, empresa_id_str: str) -> dict[str, Any]:
         )
     except (LLMError, LLMRateLimitError) as exc:
         async with AsyncSessionLocal() as session:
-            borrador_db: BorradorPropuesta | None = await session.get(BorradorPropuesta, borrador_id)
+            borrador_db: BorradorPropuesta | None = await session.get(
+                BorradorPropuesta, borrador_id
+            )
             if borrador_db:
                 borrador_db.status = AnalisisStatus.error
                 borrador_db.error_mensaje = str(exc)[:2000]
@@ -230,7 +232,9 @@ async def _run(codigo: str, empresa_id_str: str) -> dict[str, Any]:
     return stats
 
 
-def _formatear_analisis(analisis: "AnalisisBases") -> str:  # type: ignore[name-defined]
+def _formatear_analisis(
+    analisis: "AnalisisBases",  # type: ignore[name-defined]  # noqa: F821
+) -> str:
     """Convierte el análisis a texto estructurado para el prompt."""
     partes: list[str] = []
 
@@ -253,18 +257,18 @@ def _formatear_analisis(analisis: "AnalisisBases") -> str:  # type: ignore[name-
         partes.append(f"REQUISITOS TÉCNICOS:\n{reqs}")
 
     if analisis.documentos_obligatorios:
-        docs = "\n".join(
-            f"- {d.get('nombre', '')}" for d in analisis.documentos_obligatorios
-        )
+        docs = "\n".join(f"- {d.get('nombre', '')}" for d in analisis.documentos_obligatorios)
         partes.append(f"DOCUMENTOS REQUERIDOS:\n{docs}")
 
     if analisis.restricciones:
-        partes.append(f"RESTRICCIONES:\n" + "\n".join(f"- {r}" for r in analisis.restricciones))
+        partes.append("RESTRICCIONES:\n" + "\n".join(f"- {r}" for r in analisis.restricciones))
 
     return "\n\n".join(partes) or "Análisis no disponible."
 
 
-def _formatear_empresa(empresa: "Empresa") -> str:  # type: ignore[name-defined]
+def _formatear_empresa(
+    empresa: "Empresa",  # type: ignore[name-defined]  # noqa: F821
+) -> str:
     """Convierte el perfil de empresa a texto estructurado para el prompt."""
     lineas = [
         f"- Razón social: {empresa.razon_social}",

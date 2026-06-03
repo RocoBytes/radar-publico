@@ -34,9 +34,7 @@ async def _get_pipeline_item_de_empresa(
         HTTPException 404: pipeline_item no existe.
         HTTPException 403: el ítem existe pero pertenece a otra empresa.
     """
-    result = await db.execute(
-        select(PipelineItem).where(PipelineItem.id == pipeline_item_id)
-    )
+    result = await db.execute(select(PipelineItem).where(PipelineItem.id == pipeline_item_id))
     item = result.scalar_one_or_none()
     if item is None:
         raise HTTPException(

@@ -15,7 +15,7 @@ description = "Backend de Radar Público — inteligencia comercial para el Merc
 # ============================================================
 [tool.ruff]
 target-version = "py312"
-line-length = 88
+line-length = 100
 # Excluir directorios que no son código fuente
 exclude = [
     ".git",

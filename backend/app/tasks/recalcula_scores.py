@@ -75,9 +75,7 @@ async def _recalcula_empresa(empresa_id: UUID) -> dict[str, int]:
     async with AsyncSessionLocal() as session:
         for item in items:
             try:
-                score, justificacion = calcular_score(
-                    item.licitacion, intereses, regiones
-                )
+                score, justificacion = calcular_score(item.licitacion, intereses, regiones)
                 if item.score == score:
                     stats["sin_cambio"] += 1
                     continue
@@ -109,9 +107,7 @@ async def _fan_out() -> dict[str, Any]:
     from app.models.pipeline import PipelineItem
 
     async with AsyncSessionLocal() as session:
-        resultado = await session.execute(
-            select(distinct(PipelineItem.empresa_id))
-        )
+        resultado = await session.execute(select(distinct(PipelineItem.empresa_id)))
         empresa_ids = [str(eid) for (eid,) in resultado.all()]
 
     for eid in empresa_ids:

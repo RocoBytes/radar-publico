@@ -15,10 +15,14 @@ un reintento no vuelve a procesar notificaciones ya enviadas.
 
 import asyncio
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import structlog
 
 from app.celery_app import celery_app
+
+if TYPE_CHECKING:
+    from app.models.preferencias import PreferenciasNotificaciones
 
 logger = structlog.get_logger()
 
@@ -26,12 +30,14 @@ _BATCH_SIZE = 50
 
 
 # Tipos de notificación considerados "críticos" para whatsapp_solo_criticas.
-_TIPOS_CRITICOS = frozenset({
-    "nueva_oportunidad",
-    "adjudicacion_postulacion",
-    "recordatorio_cierre",
-    "oportunidad_futura",
-})
+_TIPOS_CRITICOS = frozenset(
+    {
+        "nueva_oportunidad",
+        "adjudicacion_postulacion",
+        "recordatorio_cierre",
+        "oportunidad_futura",
+    }
+)
 
 
 async def _procesar_notificaciones() -> dict[str, int]:
@@ -44,7 +50,6 @@ async def _procesar_notificaciones() -> dict[str, int]:
     from app.models.empresa import Empresa
     from app.models.enums import NotifCanal, NotifStatus
     from app.models.notificacion import Notificacion
-    from app.models.preferencias import PreferenciasNotificaciones
     from app.services.email import sender as email_sender
     from app.services.whatsapp import sender as whatsapp_sender
 
@@ -160,15 +165,16 @@ async def _procesar_notificaciones() -> dict[str, int]:
                     continue
 
                 # 4. Filtro solo_criticas
-                if prefs is not None and prefs.whatsapp_solo_criticas:
-                    if notif_db.tipo.value not in _TIPOS_CRITICOS:
-                        notif_db.status = NotifStatus.cancelada
-                        notif_db.error_mensaje = (
-                            f"whatsapp_solo_criticas:tipo={notif_db.tipo.value}"
-                        )
-                        stats["canceladas"] += 1
-                        await session.commit()
-                        continue
+                if (
+                    prefs is not None
+                    and prefs.whatsapp_solo_criticas
+                    and notif_db.tipo.value not in _TIPOS_CRITICOS
+                ):
+                    notif_db.status = NotifStatus.cancelada
+                    notif_db.error_mensaje = f"whatsapp_solo_criticas:tipo={notif_db.tipo.value}"
+                    stats["canceladas"] += 1
+                    await session.commit()
+                    continue
 
                 # 5. Verificar que la empresa tiene teléfono registrado
                 telefono: str | None = notif_db.empresa.contacto_telefono

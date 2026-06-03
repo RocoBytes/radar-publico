@@ -106,9 +106,7 @@ class MercadoPublicoClient:
     @property
     def _client(self) -> httpx.AsyncClient:
         if self._http is None:
-            raise RuntimeError(
-                "MercadoPublicoClient debe usarse como async context manager"
-            )
+            raise RuntimeError("MercadoPublicoClient debe usarse como async context manager")
         return self._http
 
     async def _request(
@@ -195,9 +193,7 @@ class MercadoPublicoClient:
                 empresa_id=empresa_id,
             )
 
-    async def _request_with_retry(
-        self, endpoint: str, params: dict[str, str]
-    ) -> httpx.Response:
+    async def _request_with_retry(self, endpoint: str, params: dict[str, str]) -> httpx.Response:
         """Ejecuta el request HTTP con retries via tenacity."""
 
         @retry(

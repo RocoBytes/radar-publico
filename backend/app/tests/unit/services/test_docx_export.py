@@ -18,11 +18,9 @@ import io
 from types import SimpleNamespace
 from typing import Any
 
-import pytest
 from docx import Document as DocxDocument
 
 from app.services.docx_export import generar_docx_borrador
-
 
 # ---------------------------------------------------------------------------
 # Helper: extrae todo el texto del documento como una sola cadena
@@ -77,9 +75,9 @@ def test_magic_bytes_son_pk_zip() -> None:
     buffer = generar_docx_borrador(_borrador())
     buffer.seek(0)
     primeros_cuatro = buffer.read(4)
-    assert primeros_cuatro == b"PK\x03\x04", (
-        f"Magic bytes DOCX esperados b'PK\\x03\\x04', obtenidos: {primeros_cuatro!r}"
-    )
+    assert (
+        primeros_cuatro == b"PK\x03\x04"
+    ), f"Magic bytes DOCX esperados b'PK\\x03\\x04', obtenidos: {primeros_cuatro!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -92,8 +90,7 @@ def test_titulo_none_usa_default() -> None:
     buffer = generar_docx_borrador(_borrador(titulo=None))
     text = _text_from_buffer(buffer)
     assert "Propuesta" in text, (
-        f"El documento debe contener 'Propuesta' cuando titulo=None. "
-        f"Texto extraído: {text!r}"
+        f"El documento debe contener 'Propuesta' cuando titulo=None. " f"Texto extraído: {text!r}"
     )
 
 
@@ -107,8 +104,7 @@ def test_titulo_personalizado_aparece_en_docx() -> None:
     buffer = generar_docx_borrador(_borrador(titulo=titulo))
     text = _text_from_buffer(buffer)
     assert "Mi Propuesta Técnica Personalizada" in text, (
-        f"El título personalizado debe aparecer en el DOCX. "
-        f"Texto extraído: {text!r}"
+        f"El título personalizado debe aparecer en el DOCX. " f"Texto extraído: {text!r}"
     )
 
 
@@ -125,18 +121,14 @@ def test_dos_secciones_ambas_en_docx() -> None:
     buffer = generar_docx_borrador(_borrador(secciones=secciones))
     text = _text_from_buffer(buffer)
 
-    assert "Sección Alfa" in text, (
-        f"La primera sección debe estar en el DOCX. Texto: {text!r}"
-    )
-    assert "Sección Beta" in text, (
-        f"La segunda sección debe estar en el DOCX. Texto: {text!r}"
-    )
-    assert "Contenido de la sección alfa" in text, (
-        f"El contenido de la primera sección debe estar en el DOCX. Texto: {text!r}"
-    )
-    assert "Contenido de la sección beta" in text, (
-        f"El contenido de la segunda sección debe estar en el DOCX. Texto: {text!r}"
-    )
+    assert "Sección Alfa" in text, f"La primera sección debe estar en el DOCX. Texto: {text!r}"
+    assert "Sección Beta" in text, f"La segunda sección debe estar en el DOCX. Texto: {text!r}"
+    assert (
+        "Contenido de la sección alfa" in text
+    ), f"El contenido de la primera sección debe estar en el DOCX. Texto: {text!r}"
+    assert (
+        "Contenido de la sección beta" in text
+    ), f"El contenido de la segunda sección debe estar en el DOCX. Texto: {text!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -149,12 +141,12 @@ def test_documentos_pendientes_aparecen_en_docx() -> None:
     buffer = generar_docx_borrador(_borrador(documentos_pendientes=docs))
     text = _text_from_buffer(buffer)
 
-    assert "Certificado ISO 9001" in text, (
-        f"El primer documento pendiente debe aparecer en el DOCX. Texto: {text!r}"
-    )
-    assert "Declaración jurada notarial" in text, (
-        f"El segundo documento pendiente debe aparecer en el DOCX. Texto: {text!r}"
-    )
+    assert (
+        "Certificado ISO 9001" in text
+    ), f"El primer documento pendiente debe aparecer en el DOCX. Texto: {text!r}"
+    assert (
+        "Declaración jurada notarial" in text
+    ), f"El segundo documento pendiente debe aparecer en el DOCX. Texto: {text!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -167,9 +159,9 @@ def test_notas_revision_aparecen_en_docx() -> None:
     buffer = generar_docx_borrador(_borrador(notas_revision=notas))
     text = _text_from_buffer(buffer)
 
-    assert "Revisar plazos" in text, (
-        f"La nota de revisión debe aparecer en el DOCX. Texto: {text!r}"
-    )
+    assert (
+        "Revisar plazos" in text
+    ), f"La nota de revisión debe aparecer en el DOCX. Texto: {text!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -189,9 +181,9 @@ def test_todos_none_no_falla() -> None:
     buffer = generar_docx_borrador(borrador)
     buffer.seek(0)
     primeros_cuatro = buffer.read(4)
-    assert primeros_cuatro == b"PK\x03\x04", (
-        "Incluso con todos los campos None, el DOCX debe ser válido"
-    )
+    assert (
+        primeros_cuatro == b"PK\x03\x04"
+    ), "Incluso con todos los campos None, el DOCX debe ser válido"
 
 
 # ---------------------------------------------------------------------------

@@ -140,8 +140,7 @@ async def listar_organismos(
     # Query paginada con orden
     offset = (page - 1) * page_size
     items_stmt = (
-        base_stmt
-        .order_by(func.count(lics_periodo.c.codigo.distinct()).desc())
+        base_stmt.order_by(func.count(lics_periodo.c.codigo.distinct()).desc())
         .offset(offset)
         .limit(page_size)
     )
@@ -216,10 +215,7 @@ async def listar_proveedores(
     # Query paginada con orden
     offset = (page - 1) * page_size
     items_stmt = (
-        base_stmt
-        .order_by(func.count(Adjudicacion.id).desc())
-        .offset(offset)
-        .limit(page_size)
+        base_stmt.order_by(func.count(Adjudicacion.id).desc()).offset(offset).limit(page_size)
     )
     rows = (await db.execute(items_stmt)).all()
 
@@ -229,9 +225,7 @@ async def listar_proveedores(
             razon_social=row.razon_social,
             nombre_fantasia=row.nombre_fantasia,
             licitaciones_ganadas=int(row.licitaciones_ganadas),
-            monto_total=(
-                float(row.monto_total) if row.monto_total is not None else None
-            ),
+            monto_total=(float(row.monto_total) if row.monto_total is not None else None),
         )
         for row in rows
     ]

@@ -27,9 +27,7 @@ class Proveedor(Base):
 
     razon_social: Mapped[str] = mapped_column(String(500), nullable=False)
     nombre_fantasia: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
-        "metadata", JSONB, nullable=True
-    )
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")

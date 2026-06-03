@@ -120,9 +120,7 @@ async def _sync_empresa(
                             item.CodigoEstado,
                             settings.feature_licitacion_state_alerts,
                         ):
-                            nuevo_estado_enum = EstadoLicitacion.from_codigo(
-                                item.CodigoEstado or 5
-                            )
+                            nuevo_estado_enum = EstadoLicitacion.from_codigo(item.CodigoEstado or 5)
                             celery_app.send_task(
                                 _STATE_CHANGE_TASK_NAME,
                                 args=[
@@ -151,9 +149,7 @@ async def _sync_empresa(
                         )
                     else:
                         # Nueva licitación — solo info básica del listado
-                        estado_enum = EstadoLicitacion.from_codigo(
-                            item.CodigoEstado or 5
-                        )
+                        estado_enum = EstadoLicitacion.from_codigo(item.CodigoEstado or 5)
                         licitacion = Licitacion(
                             codigo=item.CodigoExterno,
                             nombre=item.Nombre,

@@ -54,9 +54,7 @@ async def listar_radares(
     """Lista todos los radares de la empresa, ordenados por created_at DESC."""
 
     result = await db.execute(
-        select(Radar)
-        .where(Radar.empresa_id == empresa.id)
-        .order_by(Radar.created_at.desc())
+        select(Radar).where(Radar.empresa_id == empresa.id).order_by(Radar.created_at.desc())
     )
     radares = list(result.scalars().all())
 
@@ -78,16 +76,11 @@ async def crear_radar(
     Levanta 400 si se alcanza el límite de 50 radares por empresa.
     """
 
-    count_result = await db.execute(
-        select(func.count()).where(Radar.empresa_id == empresa.id)
-    )
+    count_result = await db.execute(select(func.count()).where(Radar.empresa_id == empresa.id))
     if count_result.scalar_one() >= _MAX_RADARES_POR_EMPRESA:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Se alcanzó el límite de {_MAX_RADARES_POR_EMPRESA} "
-                "radares por empresa"
-            ),
+            detail=(f"Se alcanzó el límite de {_MAX_RADARES_POR_EMPRESA} " "radares por empresa"),
         )
 
     radar = Radar(

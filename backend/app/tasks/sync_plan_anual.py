@@ -10,7 +10,7 @@ Endpoint de la API:
 Reglas de oro que aplican:
 - #2:  Tickets descifrados solo en memoria, nunca persistir en claro.
 - #12: Sin PII en logs — nunca loggear el ticket.
-- #17: Bulk loads en horario nocturno (22:00–07:00 CLT).
+- #17: Bulk loads en horario nocturno (22:00-07:00 CLT).
 - #18: Rate limit 5 req/s, backoff exponencial en 429/5xx.
 - #29: Tarea idempotente — upsert por (codigo_organismo, ano, descripcion).
 """
@@ -135,7 +135,9 @@ async def _get_pagina_plan_anual(
     # Fallback defensivo — la lógica de arriba cubre todos los casos
     if response is not None:
         response.raise_for_status()
-    raise RuntimeError("_get_pagina_plan_anual: máximos reintentos agotados sin respuesta")  # pragma: no cover
+    raise RuntimeError(  # pragma: no cover
+        "_get_pagina_plan_anual: máximos reintentos agotados sin respuesta"
+    )
 
 
 async def _upsert_organismo_si_falta(

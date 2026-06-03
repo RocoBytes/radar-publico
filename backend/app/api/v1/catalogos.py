@@ -68,9 +68,7 @@ async def listar_regiones(db: DbDep) -> RegionesResponse:
     """
     result = await db.execute(select(Region).order_by(Region.orden))
     regiones = list(result.scalars().all())
-    return RegionesResponse(
-        items=[RegionItem.model_validate(r) for r in regiones]
-    )
+    return RegionesResponse(items=[RegionItem.model_validate(r) for r in regiones])
 
 
 @router.get("/unspsc", response_model=UnspscResponse)
