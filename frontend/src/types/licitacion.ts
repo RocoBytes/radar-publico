@@ -121,6 +121,8 @@ export type AnalisisBases = {
   restricciones: string[] | null
   resumen_ejecutivo: string | null
   modelo_usado: string | null
+  tokens_input: number | null
+  tokens_output: number | null
   error_mensaje: string | null
   created_at: string
   updated_at: string

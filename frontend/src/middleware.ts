@@ -12,7 +12,7 @@ function isTokenExpired(token: string): boolean {
     const parts = token.split(".")
     if (parts.length !== 3) return true
     // JWT usa base64url — normalizar a base64 antes de decodificar
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/")
+    const base64 = parts[1]!.replace(/-/g, "+").replace(/_/g, "/")
     const payload = JSON.parse(atob(base64)) as { exp?: number }
     return typeof payload.exp !== "number" || payload.exp * 1000 < Date.now()
   } catch {
