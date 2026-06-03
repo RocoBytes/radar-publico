@@ -15,6 +15,7 @@ celery_app = Celery(
     backend=settings.celery_result_backend,
     include=[
         "app.tasks.sync_chilecompra",
+        "app.tasks.notifications",  # Feature B: alertas cambio estado externo
         "app.tasks.sync_detalle",  # Sprint 2: detalle de licitaciones
         "app.tasks.scrape_bases",  # Sprint 2: scraping de PDFs desde el portal
         "app.tasks.procesar_pdf",  # Sprint 2: parseo + chunking de PDFs

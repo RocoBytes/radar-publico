@@ -16,6 +16,7 @@ from typing import Any
 import structlog
 
 from app.celery_app import celery_app
+from app.config import settings
 from app.core.encryption import decrypt_ticket
 from app.models.enums import LicitacionEstado, TicketStatus
 from app.services.chilecompra.client import MercadoPublicoClient
@@ -24,6 +25,9 @@ from app.services.chilecompra.exceptions import (
     MercadoPublicoError,
     TicketInvalidoError,
 )
+
+# Nombre de la tarea de notificaciones — string para evitar importación circular
+_STATE_CHANGE_TASK_NAME = "tasks.notifications.emit_licitacion_state_change"
 
 # Importación tardía para evitar circularidad (sync_detalle importa celery_app,
 # que a su vez importa este módulo vía include). Se usa el string name como
@@ -41,6 +45,15 @@ def _hash_licitacion(codigo: str, nombre: str, estado_codigo: int | None) -> str
         ensure_ascii=False,
     )
     return hashlib.sha256(content.encode()).hexdigest()
+
+
+def _should_emit_state_alert(
+    existing_codigo: int | None,
+    new_codigo: int | None,
+    flag_activo: bool,
+) -> bool:
+    """Determina si corresponde encolar una alerta de cambio de estado externo."""
+    return flag_activo and existing_codigo is not None and existing_codigo != new_codigo
 
 
 async def _sync_empresa(
@@ -101,6 +114,23 @@ async def _sync_empresa(
                         if existing.hash_contenido == nuevo_hash:
                             stats["sin_cambio"] += 1
                             continue
+                        # Detectar cambio de estado y encolar notificación (no bloquea sync)
+                        if _should_emit_state_alert(
+                            existing.estado_codigo,
+                            item.CodigoEstado,
+                            settings.feature_licitacion_state_alerts,
+                        ):
+                            nuevo_estado_enum = EstadoLicitacion.from_codigo(
+                                item.CodigoEstado or 5
+                            )
+                            celery_app.send_task(
+                                _STATE_CHANGE_TASK_NAME,
+                                args=[
+                                    item.CodigoExterno,
+                                    existing.estado,  # valor string del enum actual
+                                    nuevo_estado_enum.estado_interno,
+                                ],
+                            )
                         # Solo actualizar si cambió algo
                         existing.nombre = item.Nombre
                         existing.estado = EstadoLicitacion.from_codigo(

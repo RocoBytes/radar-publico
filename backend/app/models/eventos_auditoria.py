@@ -24,6 +24,7 @@ class AuditAction:
     PASSWORD_RESET_REQUESTED = "auth.password.reset.requested"
     PASSWORD_RESET_COMPLETED = "auth.password.reset.completed"
     USER_CREATED = "user.created"
+    NOTIFICACION_CAMBIO_ESTADO_EXTERNO = "notificacion.cambio_estado_externo"
 
 
 class EventoAuditoria(Base):
