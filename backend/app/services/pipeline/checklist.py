@@ -55,6 +55,8 @@ async def get_items(
     db: AsyncSession,
     pipeline_item_id: uuid.UUID,
     empresa_id: uuid.UUID,
+    limit: int = 25,
+    offset: int = 0,
 ) -> list[PipelineChecklistItem]:
     """Retorna los ítems del checklist de un pipeline_item, ordenados por orden ASC.
 
@@ -66,6 +68,8 @@ async def get_items(
         select(PipelineChecklistItem)
         .where(PipelineChecklistItem.pipeline_item_id == pipeline_item_id)
         .order_by(PipelineChecklistItem.orden.asc(), PipelineChecklistItem.created_at.asc())
+        .limit(limit)
+        .offset(offset)
     )
     return list(result.scalars().all())
 

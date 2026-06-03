@@ -12,7 +12,7 @@ Si el flag está apagado se retorna 503.
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 
 from app.api.deps import CurrentUser, DbDep, EmpresaDep
 from app.config import settings
@@ -46,12 +46,14 @@ async def listar_checklist(
     db: DbDep,
     current_user: CurrentUser,
     empresa: EmpresaDep,
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ) -> list[ChecklistItemResponse]:
     """Lista los ítems del checklist de un pipeline_item, ordenados por orden ASC."""
     if not settings.feature_pipeline_checklist:
         raise _FLAG_APAGADO
 
-    items = await checklist_service.get_items(db, pipeline_item_id, empresa.id)
+    items = await checklist_service.get_items(db, pipeline_item_id, empresa.id, limit=limit, offset=offset)
     return [ChecklistItemResponse.model_validate(i) for i in items]
 
 
