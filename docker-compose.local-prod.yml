@@ -1,0 +1,41 @@
+# Radar Público — Override para testear build de producción en local
+# Usa imágenes de producción pero expone puertos directamente (sin Caddy, sin TLS)
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.local-prod.yml up -d --build
+#
+# Acceso:
+#   Frontend: http://localhost:3000
+#   API:      http://localhost:8000
+#   Docs API: http://localhost:8000/docs
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  api:
+    ports:
+      - "8000:8000"
+    environment:
+      CORS_ORIGINS: "http://localhost:3000"
+
+  web:
+    ports:
+      - "3000:3000"
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: "http://localhost:8000"
+        NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:8000"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+
+  # Deshabilitar Caddy — acceso directo por puertos
+  proxy:
+    profiles: ["never"]
+
+  # worker_scraper usa Playwright + Chromium — build pesado
+  # Deshabilitarlo en local si no necesitás testear scraping
+  worker_scraper:
+    profiles: ["never"]

@@ -1,50 +1,49 @@
 # Radar Público — Reverse proxy con TLS automático
-# Caddy maneja Let's Encrypt automáticamente cuando apuntas un DNS
+# Un solo dominio: frontend en / y API en /api/*
+# Variable de entorno:
+#   DOMAIN_APP — dominio principal (default: radarpublico.cl)
 
-# Reemplaza estos dominios con los tuyos antes de desplegar
 {$DOMAIN_APP:radarpublico.cl} {
     encode gzip zstd
 
-    # Frontend Next.js
-    reverse_proxy web:3000 {
-        header_up Host {host}
-        header_up X-Real-IP {remote}
-        header_up X-Forwarded-For {remote}
-        header_up X-Forwarded-Proto {scheme}
+    # API FastAPI — rutas propias del backend
+    handle /api/* {
+        reverse_proxy api:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 
-    # Headers de seguridad
+    handle /health {
+        reverse_proxy api:8000
+    }
+
+    handle /docs {
+        reverse_proxy api:8000
+    }
+
+    handle /openapi.json {
+        reverse_proxy api:8000
+    }
+
+    # Frontend Next.js — todo lo demás
+    handle {
+        reverse_proxy web:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
         Permissions-Policy "geolocation=(), microphone=(), camera=()"
-        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: wss:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-        -Server
-    }
-
-    log {
-        output stdout
-        format console
-    }
-}
-
-{$DOMAIN_API:api.radarpublico.cl} {
-    encode gzip zstd
-
-    reverse_proxy api:8000 {
-        header_up Host {host}
-        header_up X-Real-IP {remote}
-        header_up X-Forwarded-For {remote}
-        header_up X-Forwarded-Proto {scheme}
-    }
-
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        Referrer-Policy "strict-origin-when-cross-origin"
         -Server
     }
 
