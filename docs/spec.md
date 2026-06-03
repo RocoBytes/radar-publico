@@ -78,12 +78,14 @@ Criterios de aceptación:
 - Given que creé una cuenta, when el cliente recibe el email, then debe poder iniciar sesión con la contraseña temporal y se le obliga a cambiarla en el primer login.
 - Given que un email ya está registrado, when intento crear otra cuenta con ese email, then el sistema rechaza la operación con mensaje claro.
 
-**US-1.2 — Suspender o eliminar cuenta**
-> Como admin, quiero suspender o eliminar cuentas, para gestionar clientes morosos o que se dieron de baja.
+**US-1.2 — Suspender o reactivar cuenta**
+> Como admin, quiero suspender o reactivar cuentas, para gestionar clientes morosos o que se dieron de baja.
 
 Criterios:
 - Suspender → el usuario no puede iniciar sesión pero sus datos se conservan 90 días.
+- Reactivar → restituye el acceso de una cuenta suspendida.
 - Eliminar → soft delete inicial; hard delete tras 90 días.
+- API: `PATCH /api/admin/cuentas/{id}/estado` con `accion: "suspender" | "reactivar"`.
 
 **US-1.3 — Cargar ticket de ChileCompra del cliente**
 > Como admin, quiero cargar el ticket del cliente, para que el sistema pueda hacer consultas a la API en su nombre.

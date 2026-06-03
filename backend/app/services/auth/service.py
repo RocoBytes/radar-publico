@@ -274,7 +274,7 @@ class AuthService:
         )
         await self._db.commit()
 
-        reset_url = f"https://radarpublico.cl/reset-password?token={plain}"
+        reset_url = f"{settings.frontend_url}/reset-password?token={plain}"
         subject, html, text = tpl_reset.render(reset_url)
         await email_sender.send_email(user.email, subject, html, text)
 

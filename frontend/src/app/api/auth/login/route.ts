@@ -39,10 +39,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const errorBody = (await backendResponse.json().catch(() => ({
       detail: "Error de autenticación",
     }))) as { detail?: string }
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { detail: errorBody.detail ?? "Error de autenticación" },
       { status: backendResponse.status }
     )
+    const retryAfter = backendResponse.headers.get("Retry-After")
+    if (retryAfter) errorResponse.headers.set("Retry-After", retryAfter)
+    return errorResponse
   }
 
   const data = (await backendResponse.json()) as LoginResponse

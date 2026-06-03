@@ -131,6 +131,7 @@ ignore_missing_imports = true
 # ============================================================
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["app/tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
@@ -143,7 +144,10 @@ addopts = [
 markers = [
     "unit: tests unitarios sin dependencias externas",
     "integration: tests de integración con Postgres/Redis",
+    "e2e: tests end-to-end de criterios de aceptación del spec",
     "slow: tests lentos (skippear en CI rápido)",
+    "live_api: consume la API real de ChileCompra (cuota limitada, skip en CI)",
+    "live_llm: invoca Anthropic real (costo real, skip en CI)",
 ]
 
 [tool.coverage.run]

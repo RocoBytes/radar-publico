@@ -1,10 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Strict mode de React activado siempre
   reactStrictMode: true,
+  output: "standalone",
 
-  // Headers de seguridad (regla de oro #9)
   async headers() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
     return [
       {
         source: "/(.*)",
@@ -15,6 +15,22 @@ const nextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains; preload",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: https:",
+              `connect-src 'self' ${apiUrl} https://*.sentry.io`,
+              "font-src 'self'",
+              "frame-ancestors 'none'",
+            ].join("; "),
           },
         ],
       },

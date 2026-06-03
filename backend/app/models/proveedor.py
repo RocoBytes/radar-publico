@@ -5,13 +5,16 @@ Sincronizado desde la API y desde Datos Abiertos.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, String, text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.adjudicacion import Adjudicacion
 
 
 class Proveedor(Base):
@@ -33,6 +36,12 @@ class Proveedor(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    # Relaciones
+    adjudicaciones: Mapped[list["Adjudicacion"]] = relationship(
+        "Adjudicacion",
+        back_populates="proveedor",
     )
 
     def __repr__(self) -> str:

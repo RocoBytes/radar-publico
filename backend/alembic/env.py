@@ -11,11 +11,9 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-# Importar Base para que Alembic detecte los modelos automáticamente
-# Se van agregando los modelos aquí cuando se creen en Sprint 1+
+# Importar Base y todos los modelos para que Alembic los detecte en autogenerate
 from app.db.base import Base
-
-# import app.models
+import app.models  # noqa: F401
 
 config = context.config
 

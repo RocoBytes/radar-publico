@@ -13,12 +13,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.core.security import InvalidTokenError, decode_access_token
 from app.db import session as _db_session
+from app.models.empresa import Empresa
 from app.models.enums import UserRole, UserStatus
 from app.models.usuario import Usuario
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -30,14 +32,20 @@ DbDep = Annotated[AsyncSession, Depends(get_db)]
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    request: Request,
     db: DbDep,
+    bearer_token: Annotated[str | None, Depends(oauth2_scheme)] = None,
 ) -> Usuario:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Credenciales inválidas",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    # Prioridad 1: Authorization Bearer (Swagger, clientes API, impersonación)
+    # Prioridad 2: cookie access_token (frontend web — httpOnly, no legible por JS)
+    token = bearer_token or request.cookies.get("access_token")
+    if not token:
+        raise credentials_exception
     try:
         payload = decode_access_token(token)
     except InvalidTokenError:
@@ -68,6 +76,22 @@ async def get_current_user(
 CurrentUser = Annotated[Usuario, Depends(get_current_user)]
 
 
+async def get_empresa_o_404(db: DbDep, current_user: CurrentUser) -> Empresa:
+    result = await db.execute(
+        select(Empresa).where(Empresa.usuario_id == current_user.id)
+    )
+    empresa = result.scalar_one_or_none()
+    if empresa is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa no encontrada para este usuario",
+        )
+    return empresa
+
+
+EmpresaDep = Annotated[Empresa, Depends(get_empresa_o_404)]
+
+
 async def get_current_admin(current_user: CurrentUser) -> Usuario:
     if current_user.rol != UserRole.admin:
         raise HTTPException(
@@ -93,8 +117,9 @@ ActiveUser = Annotated[Usuario, Depends(require_password_change_completed)]
 
 
 def get_request_ip(request: Request) -> str:
-    """Extrae la IP del cliente. Respeta X-Forwarded-For solo en producción."""
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """Extrae la IP del cliente. Solo respeta X-Forwarded-For en producción (detrás de Caddy)."""
+    if settings.is_production:
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"

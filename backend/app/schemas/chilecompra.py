@@ -50,6 +50,20 @@ class FechasAPI(BaseModel):
     FechaEntregaAntecedentes: datetime | None = None
 
 
+class AdjudicacionItemAPI(BaseModel):
+    """Adjudicación de un ítem de licitación tal como la devuelve la API.
+
+    Validado contra respuesta real de la API (2026-05-17):
+      RutProveedor, NombreProveedor, Cantidad, MontoUnitario
+    El monto total del ítem es Cantidad × MontoUnitario.
+    """
+
+    RutProveedor: str | None = None
+    NombreProveedor: str | None = None
+    Cantidad: float | None = None
+    MontoUnitario: float | None = None
+
+
 class ItemListadoAPI(BaseModel):
     """Item de una licitación en el bloque Items.Listado."""
 
@@ -61,7 +75,7 @@ class ItemListadoAPI(BaseModel):
     Descripcion: str | None = None
     UnidadMedida: str | None = None
     Cantidad: float | None = None
-    Adjudicacion: object | None = None
+    Adjudicacion: AdjudicacionItemAPI | None = None
 
 
 class ItemsAPI(BaseModel):

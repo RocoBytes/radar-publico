@@ -2,6 +2,11 @@
 # Radar Público — .gitignore
 # ============================================================
 
+# === Herramientas de desarrollo local ===
+.agents/
+.claude/
+skills-lock.json
+
 # === Variables de entorno (CRÍTICO: nunca commitear) ===
 .env
 .env.local
@@ -22,8 +27,8 @@ develop-eggs/
 dist/
 downloads/
 eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -117,6 +122,7 @@ docker-compose.override.yml
 *~
 .cursor/
 .zed/
+.windsurf/
 
 # === Sistema operativo ===
 .DS_Store

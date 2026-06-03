@@ -11,6 +11,7 @@ export type EmpresaBasica = {
   id: string
   rut: string
   razon_social: string
+  onboarding_completado: boolean
 }
 
 /** Perfil del usuario autenticado */

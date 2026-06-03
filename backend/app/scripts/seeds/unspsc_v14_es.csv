@@ -1,0 +1,69 @@
+codigo,nombre_es,descripcion_es,nivel,segmento,familia,clase,parent_codigo
+10,Alimentos bebidas y tabaco,,1,10,,,
+11,Materiales vegetales animales y de pesca,,1,11,,,
+15,Combustibles lubricantes aceites y gases,,1,15,,,
+20,Extraccion mineria petroleo y gas,,1,20,,,
+22,Edificios y estructuras y construccion,,1,22,,,
+23,Componentes y suministros industriales,,1,23,,,
+24,Materiales y productos agricolas,,1,24,,,
+25,Vehiculos,,1,25,,,
+26,Maquinaria y equipos de ingenieria industrial,,1,26,,,
+27,Herramientas y equipos generales,,1,27,,,
+30,Estructuras y componentes de construccion,,1,30,,,
+31,Manufactura y componentes de maquinaria,,1,31,,,
+32,Componentes electronicos,,1,32,,,
+39,Equipos y suministros electricos,,1,39,,,
+40,Distribucion almacenamiento y transporte,,1,40,,,
+41,Laboratorio equipos de medicion y de observacion,,1,41,,,
+43,Tecnologia de la informacion difusion y telecomunicaciones,,1,43,,,
+44,Suministros y equipos de oficina,,1,44,,,
+46,Seguridad y proteccion,,1,46,,,
+47,Mantenimiento reparacion y acondicionamiento,,1,47,,,
+48,Materiales y accesorios de produccion industrial,,1,48,,,
+49,Deportes y recreacion,,1,49,,,
+50,Alimentos y bebidas,,1,50,,,
+51,Medicamentos y productos farmaceuticos,,1,51,,,
+52,Ropa maletas y accesorios personales,,1,52,,,
+53,Articulos domesticos y personales,,1,53,,,
+55,Publicaciones y material de impresion,,1,55,,,
+56,Mobiliario,,1,56,,,
+60,Artes y artesanias,,1,60,,,
+62,Educacion y formacion,,1,62,,,
+70,Servicios de agricultura pesca silvicultura,,1,70,,,
+71,Servicios de mineria extraccion petroleo y gas,,1,71,,,
+72,Servicios de construccion y mantenimiento,,1,72,,,
+73,Servicios industriales de produccion y manufactura,,1,73,,,
+76,Limpieza industrial,,1,76,,,
+77,Servicios ambientales,,1,77,,,
+78,Servicios de transporte,,1,78,,,
+80,Servicios de gestion y consultoria empresarial,,1,80,,,
+81,Servicios de ingenieria y tecnologia,,1,81,,,
+82,Servicios editoriales y relacionados,,1,82,,,
+83,Servicios de agricultura pesca y silvicultura,,1,83,,,
+84,Servicios financieros y de seguros,,1,84,,,
+85,Atencion sanitaria,,1,85,,,
+86,Educacion y formacion profesional,,1,86,,,
+87,Auditoria contabilidad y servicios fiscales,,1,87,,,
+90,Servicios de viaje y alojamiento,,1,90,,,
+91,Servicios personales,,1,91,,,
+92,Servicios de defensa y seguridad,,1,92,,,
+93,Servicios politicos y de asuntos civiles,,1,93,,,
+94,Organizaciones y clubes,,1,94,,,
+4320,Computadores y equipos perifericos,,2,43,4320,,43
+4321,Equipos de comunicacion de voz y datos,,2,43,4321,,43
+4322,Software,,2,43,4322,,43
+4323,Servicios tecnologicos de la informacion y las comunicaciones,,2,43,4323,,43
+4324,Componentes de redes y comunicaciones,,2,43,4324,,43
+4325,Equipos de transmision de datos,,2,43,4325,,43
+7200,Servicios de edificacion y construccion,,2,72,7200,,72
+7201,Servicios de construccion residencial,,2,72,7201,,72
+7210,Servicios de mantenimiento y reparacion de instalaciones,,2,72,7210,,72
+8010,Servicios de consultoria de gestion,,2,80,8010,,80
+8011,Servicios de consultoria de recursos humanos,,2,80,8011,,80
+8111,Servicios de ingenieria informatica,,2,81,8111,,81
+8112,Servicios de consultoria informatica,,2,81,8112,,81
+8500,Servicios de atencion medica,,2,85,8500,,85
+8600,Servicios de educacion vocacional,,2,86,8600,,86
+7610,Servicios de limpieza de edificios y oficinas,,2,76,7610,,76
+7800,Servicios de transporte de pasajeros,,2,78,7800,,78
+7810,Servicios de transporte de mercancias,,2,78,7810,,78

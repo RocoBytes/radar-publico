@@ -213,7 +213,7 @@ Estas reglas tienen prioridad sobre cualquier sugerencia de implementación. Si 
 
 ### Datos y rendimiento
 15. **Un ticket por cliente, no compartido.** Cada empresa usa su propio ticket de ChileCompra. Nunca usar un ticket compartido para múltiples clientes (viola TOS y satura cuota).
-16. **Backfill desde Datos Abiertos, no desde la API.** Cargas masivas históricas usan los CSVs públicos de `datos-abiertos.chilecompra.cl`. La API solo para datos del día.
+16. **Backfill desde la API en horario nocturno, una request por día consultado.** Los CSVs públicos de `datos-abiertos.chilecompra.cl` **no están disponibles** para licitaciones (el portal solo expone visualizaciones y descargas por organismo específico, descubierto en Sprint 1). Cargas masivas históricas usan el endpoint de listado por fecha de la API ChileCompra, ejecutadas únicamente en ventana nocturna (22:00–07:00 CLT) respetando la cuota de 10.000 req/día por ticket (~1 req/fecha). Ver `app/scripts/backfill.py`.
 17. **Bulk loads en horario nocturno** (22:00–07:00 CLT) por recomendación de ChileCompra.
 18. **Rate limit interno antes de llamar la API:** máximo 5-10 req/segundo por ticket. Backoff exponencial ante 429 o 5xx.
 19. **Nunca queries N+1.** Si necesitas datos de relaciones, usa `selectinload`/`joinedload` o un único query con joins.
@@ -420,4 +420,4 @@ Si estás leyendo esto como Claude Code o asistente IA durante el desarrollo:
 
 ---
 
-*Última actualización: 2026-05-07. Versionar este archivo cuando cambien decisiones arquitectónicas.*
+*Última actualización: 2026-05-10. Versionar este archivo cuando cambien decisiones arquitectónicas.*

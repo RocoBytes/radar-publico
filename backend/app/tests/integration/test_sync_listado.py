@@ -20,7 +20,7 @@ import pytest_asyncio
 from sqlalchemy import select, text
 
 from app.core.encryption import encrypt_ticket
-from app.db.session import AsyncSessionLocal
+from app.db import session as _db_session
 from app.models.empresa import Empresa
 from app.models.enums import EmpresaTamano, TicketStatus, UserRole, UserStatus
 from app.models.ticket import TicketApi
@@ -34,7 +34,7 @@ pytestmark = pytest.mark.integration
 @pytest_asyncio.fixture(scope="function")
 async def empresa_prueba() -> AsyncGenerator[dict[str, str], None]:
     """Crea un usuario + empresa + ticket de prueba en la BD, los limpia al final."""
-    async with AsyncSessionLocal() as session:
+    async with _db_session.AsyncSessionLocal() as session:
         usuario = Usuario(
             email=f"test_integration_{uuid.uuid4().hex[:8]}@radarpublico.cl",
             password_hash="$2b$12$placeholder_no_se_usa_en_esta_tarea",
@@ -74,7 +74,7 @@ async def empresa_prueba() -> AsyncGenerator[dict[str, str], None]:
     yield ids
 
     # Cleanup
-    async with AsyncSessionLocal() as session:
+    async with _db_session.AsyncSessionLocal() as session:
         usuario_cleanup: Usuario | None = await session.get(
             Usuario, uuid.UUID(ids["usuario_id"])
         )
@@ -93,7 +93,7 @@ async def test_sync_listado_trae_licitaciones(empresa_prueba: dict[str, str]) ->
     ticket_id = uuid.UUID(empresa_prueba["ticket_id"])
 
     # Obtener el ticket cifrado
-    async with AsyncSessionLocal() as session:
+    async with _db_session.AsyncSessionLocal() as session:
         ticket_obj = await session.get(TicketApi, ticket_id)
         assert ticket_obj is not None
         ticket_cifrado = ticket_obj.ticket_cifrado
@@ -133,7 +133,7 @@ async def test_sync_idempotente(empresa_prueba: dict[str, str]) -> None:
     empresa_id = uuid.UUID(empresa_prueba["empresa_id"])
     ticket_id = uuid.UUID(empresa_prueba["ticket_id"])
 
-    async with AsyncSessionLocal() as session:
+    async with _db_session.AsyncSessionLocal() as session:
         ticket_obj = await session.get(TicketApi, ticket_id)
         assert ticket_obj is not None
         ticket_plaintext = decrypt_ticket(ticket_obj.ticket_cifrado)
@@ -150,7 +150,7 @@ async def test_sync_idempotente(empresa_prueba: dict[str, str]) -> None:
     # Persistir las primeras 5 licitaciones
     from app.models.enums import LicitacionEstado
 
-    async with AsyncSessionLocal() as session:
+    async with _db_session.AsyncSessionLocal() as session:
         for item in response.Listado[:5]:
             existing = await session.get(Licitacion, item.CodigoExterno)
             if existing is None:
@@ -165,7 +165,7 @@ async def test_sync_idempotente(empresa_prueba: dict[str, str]) -> None:
         await session.commit()
 
     # Contar tras primera sync
-    async with AsyncSessionLocal() as session:
+    async with _db_session.AsyncSessionLocal() as session:
         count_primera = (
             await session.execute(select(text("count(*) FROM licitaciones")))
         ).scalar()
@@ -179,7 +179,7 @@ async def test_sync_idempotente(empresa_prueba: dict[str, str]) -> None:
             empresa_id=empresa_id,
         )
 
-    async with AsyncSessionLocal() as session:
+    async with _db_session.AsyncSessionLocal() as session:
         for item in response2.Listado[:5]:
             existing = await session.get(Licitacion, item.CodigoExterno)
             if existing is None:
@@ -196,7 +196,7 @@ async def test_sync_idempotente(empresa_prueba: dict[str, str]) -> None:
     del ticket_plaintext
 
     # Verificar que el count no aumentó (idempotencia)
-    async with AsyncSessionLocal() as session:
+    async with _db_session.AsyncSessionLocal() as session:
         count_segunda = (
             await session.execute(select(text("count(*) FROM licitaciones")))
         ).scalar()
@@ -217,7 +217,7 @@ async def test_api_quota_log_se_persiste(empresa_prueba: dict[str, str]) -> None
     empresa_id = uuid.UUID(empresa_prueba["empresa_id"])
     ticket_id = uuid.UUID(empresa_prueba["ticket_id"])
 
-    async with AsyncSessionLocal() as session:
+    async with _db_session.AsyncSessionLocal() as session:
         ticket_obj = await session.get(TicketApi, ticket_id)
         assert ticket_obj is not None
         ticket_plaintext = decrypt_ticket(ticket_obj.ticket_cifrado)
@@ -225,7 +225,7 @@ async def test_api_quota_log_se_persiste(empresa_prueba: dict[str, str]) -> None
     from sqlalchemy import func
 
     # Contar logs antes
-    async with AsyncSessionLocal() as session:
+    async with _db_session.AsyncSessionLocal() as session:
         count_antes_raw = (
             await session.execute(
                 select(func.count()).where(ApiQuotaLog.ticket_id == ticket_id)
@@ -244,7 +244,7 @@ async def test_api_quota_log_se_persiste(empresa_prueba: dict[str, str]) -> None
     del ticket_plaintext
 
     # Debe haber al menos 1 log nuevo
-    async with AsyncSessionLocal() as session:
+    async with _db_session.AsyncSessionLocal() as session:
         count_despues_raw = (
             await session.execute(
                 select(func.count()).where(ApiQuotaLog.ticket_id == ticket_id)

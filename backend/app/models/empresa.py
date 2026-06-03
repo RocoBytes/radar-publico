@@ -27,6 +27,11 @@ from app.db.base import Base
 from app.models.enums import EmpresaTamano
 
 if TYPE_CHECKING:
+    from app.models.interes import Interes
+    from app.models.notificacion import Notificacion
+    from app.models.pipeline import PipelineItem
+    from app.models.preferencias import PreferenciasNotificaciones
+    from app.models.radar import Radar
     from app.models.ticket import TicketApi
     from app.models.usuario import Usuario
 
@@ -117,11 +122,47 @@ class Empresa(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    intereses: Mapped[list["Interes"]] = relationship(
+        "Interes",
+        back_populates="empresa",
+        cascade="all, delete-orphan",
+    )
+    radares: Mapped[list["Radar"]] = relationship(
+        "Radar",
+        back_populates="empresa",
+        cascade="all, delete-orphan",
+    )
+    pipeline_items: Mapped[list["PipelineItem"]] = relationship(
+        "PipelineItem",
+        back_populates="empresa",
+        cascade="all, delete-orphan",
+    )
+    notificaciones: Mapped[list["Notificacion"]] = relationship(
+        "Notificacion",
+        back_populates="empresa",
+        cascade="all, delete-orphan",
+    )
+    preferencias_notificaciones: Mapped[
+        "PreferenciasNotificaciones | None"
+    ] = relationship(
+        "PreferenciasNotificaciones",
+        back_populates="empresa",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("idx_empresas_rut", "rut"),
         Index("idx_empresas_usuario_id", "usuario_id"),
     )
+
+    @property
+    def tiene_ticket(self) -> bool:
+        """True si la empresa tiene un ticket de ChileCompra cargado.
+
+        Requiere que la relación ticket esté eager-loaded (selectinload).
+        """
+        return self.ticket is not None
 
     def __repr__(self) -> str:
         return (

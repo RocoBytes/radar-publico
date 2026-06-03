@@ -146,6 +146,45 @@ services:
     command: celery -A app.celery_app worker --loglevel=info --concurrency=4
 
   # ============================================================
+  # Worker Scraper: Celery para queue 'scraping' (Playwright + R2)
+  # Imagen dedicada con browsers Chromium — concurrency baja (2) por RAM.
+  # ============================================================
+  worker_scraper:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: playwright
+    container_name: radar_worker_scraper
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://radar:${POSTGRES_PASSWORD:-radar_dev_password}@postgres:5432/radar
+      DATABASE_URL_SYNC: postgresql://radar:${POSTGRES_PASSWORD:-radar_dev_password}@postgres:5432/radar
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change_me_32_bytes_long_min_____}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY}
+      R2_SECRET_KEY: ${R2_SECRET_KEY}
+      R2_BUCKET: ${R2_BUCKET:-radar-publico-dev}
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      PLAYWRIGHT_HEADLESS: "true"
+      PLAYWRIGHT_TIMEOUT_MS: "30000"
+      SCRAPING_DELAY_MS: "2000"
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - radar_net
+    command: celery -A app.celery_app worker -Q scraping --concurrency=2 --loglevel=info
+
+  # ============================================================
   # Beat Scheduler: cron para Celery
   # ============================================================
   beat:

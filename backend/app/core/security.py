@@ -9,13 +9,14 @@ import hashlib
 import secrets
 import string
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt as _bcrypt
+import jwt
+from jwt.exceptions import PyJWTError
 from pydantic import BaseModel
 
 from app.config import settings
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
+_BCRYPT_ROUNDS = 12
 
 
 class AccessTokenPayload(BaseModel):
@@ -30,11 +31,12 @@ class InvalidTokenError(Exception):
 
 
 def hash_password(plaintext: str) -> str:
-    return str(_pwd_context.hash(plaintext))
+    salt = _bcrypt.gensalt(rounds=_BCRYPT_ROUNDS)
+    return _bcrypt.hashpw(plaintext.encode(), salt).decode()
 
 
 def verify_password(plaintext: str, hashed: str) -> bool:
-    return bool(_pwd_context.verify(plaintext, hashed))
+    return bool(_bcrypt.checkpw(plaintext.encode(), hashed.encode()))
 
 
 def hash_token(plaintext: str) -> str:
@@ -65,8 +67,25 @@ def decode_access_token(token: str) -> AccessTokenPayload:
         if raw.get("type") != "access":
             raise InvalidTokenError("Tipo de token incorrecto")
         return AccessTokenPayload(**raw)
-    except JWTError as exc:
+    except PyJWTError as exc:
         raise InvalidTokenError(str(exc)) from exc
+
+
+def create_impersonation_token(subject: str, admin_id: str) -> str:
+    """Crea JWT de impersonación (1h) con claim extra impersonated_by_admin_id.
+
+    Regla de oro #14: la acción se registra en eventos_auditoria por el caller.
+    """
+    now = datetime.now(UTC)
+    payload = {
+        "sub": subject,
+        "iat": now,
+        "exp": now + timedelta(hours=1),
+        "type": "access",
+        "impersonated_by_admin_id": admin_id,
+    }
+    encoded = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return str(encoded)
 
 
 def create_refresh_token() -> tuple[str, str]:
