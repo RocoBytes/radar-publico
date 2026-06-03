@@ -15,6 +15,8 @@ import {
   deletePipelineNota,
 } from "@/lib/api"
 import type { PipelineEstado } from "@/types/pipeline"
+import { features } from "@/lib/features"
+import { ChecklistSection } from "@/components/feature/pipeline/checklist-section"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
@@ -331,6 +333,14 @@ export function PipelineItemClient({ id }: PipelineItemClientProps) {
           </Button>
         </div>
       </div>
+
+      {/* Checklist documental — gateado por feature flag */}
+      {features.pipelineChecklist && (
+        <>
+          <Separator />
+          <ChecklistSection pipelineItemId={id} />
+        </>
+      )}
     </div>
   )
 }

@@ -53,6 +53,12 @@ import type {
   InteresCreateRequest,
   InteresListResponse,
 } from "@/types/intereses"
+import type {
+  ChecklistItem,
+  ChecklistItemCreateRequest,
+  ChecklistItemUpdateRequest,
+  ChecklistBootstrapResponse,
+} from "@/types/checklist"
 
 // URL pública del backend (usada en client components cuando llaman directo al backend)
 // Para SSR se usa INTERNAL_API_URL desde los Server Components / Route Handlers
@@ -670,4 +676,56 @@ export async function getProveedores(params: {
   if (params.page) q.set("page", String(params.page))
   if (params.page_size) q.set("page_size", String(params.page_size))
   return apiFetch<ProveedoresResponse>(`/directorios/proveedores?${q}`)
+}
+
+// ---- Checklist documental ----
+
+export async function getChecklist(
+  pipelineItemId: string,
+  params?: { limit?: number; offset?: number }
+): Promise<ChecklistItem[]> {
+  const q = new URLSearchParams()
+  if (params?.limit !== undefined) q.set("limit", String(params.limit))
+  if (params?.offset !== undefined) q.set("offset", String(params.offset))
+  const qs = q.toString() ? `?${q}` : ""
+  return apiFetch<ChecklistItem[]>(`/pipeline/${pipelineItemId}/checklist${qs}`)
+}
+
+export async function createChecklistItem(
+  pipelineItemId: string,
+  data: ChecklistItemCreateRequest
+): Promise<ChecklistItem> {
+  return apiFetch<ChecklistItem>(`/pipeline/${pipelineItemId}/checklist`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateChecklistItem(
+  pipelineItemId: string,
+  itemId: string,
+  data: ChecklistItemUpdateRequest
+): Promise<ChecklistItem> {
+  return apiFetch<ChecklistItem>(
+    `/pipeline/${pipelineItemId}/checklist/${itemId}`,
+    { method: "PATCH", body: JSON.stringify(data) }
+  )
+}
+
+export async function deleteChecklistItem(
+  pipelineItemId: string,
+  itemId: string
+): Promise<void> {
+  return apiFetch<void>(`/pipeline/${pipelineItemId}/checklist/${itemId}`, {
+    method: "DELETE",
+  })
+}
+
+export async function bootstrapChecklist(
+  pipelineItemId: string
+): Promise<ChecklistBootstrapResponse> {
+  return apiFetch<ChecklistBootstrapResponse>(
+    `/pipeline/${pipelineItemId}/checklist/bootstrap-from-analysis`,
+    { method: "POST" }
+  )
 }
