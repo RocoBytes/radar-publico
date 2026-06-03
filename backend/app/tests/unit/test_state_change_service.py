@@ -145,150 +145,39 @@ async def _limpieza_notificaciones(  # type: ignore[misc]
 
 
 # ---------------------------------------------------------------------------
-# Test 1: sync encola task al detectar cambio de estado
+# Test 1: guard retorna True cuando hay cambio de estado y flag activo
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_sync_encola_task_al_detectar_cambio(
-    empresa_con_pipeline: dict[str, object],
-) -> None:
-    """sync detecta cambio de estado_codigo y llama celery_app.send_task."""
-    from app.models.enums import LicitacionEstado
-    from app.models.licitacion import Licitacion
-    from app.db.session import AsyncSessionLocal
+def test_sync_encola_task_al_detectar_cambio() -> None:
+    """_should_emit_state_alert retorna True cuando el estado cambia y el flag está activo."""
+    from app.tasks.sync_chilecompra import _should_emit_state_alert
 
-    licitacion_codigo = str(empresa_con_pipeline["licitacion_codigo"])
-
-    # El pipeline_item existe → send_task debe ser llamado cuando cambia estado
-    with patch("app.tasks.sync_chilecompra.celery_app") as mock_celery, \
-         patch("app.tasks.sync_chilecompra.settings") as mock_settings:
-        mock_settings.feature_licitacion_state_alerts = True
-
-        # Simular una licitación existente con estado distinto al nuevo
-        mock_licitacion = MagicMock()
-        mock_licitacion.estado_codigo = 5  # publicada
-        mock_licitacion.estado = "publicada"
-        mock_licitacion.hash_contenido = "hash_viejo"
-
-        mock_send_task = MagicMock()
-        mock_celery.send_task = mock_send_task
-
-        # Llamar directamente la lógica de detección de cambio
-        from app.services.chilecompra.enums import EstadoLicitacion
-
-        nuevo_codigo = 6  # cerrada
-        if (
-            mock_settings.feature_licitacion_state_alerts
-            and mock_licitacion.estado_codigo is not None
-            and mock_licitacion.estado_codigo != nuevo_codigo
-        ):
-            nuevo_estado_enum = EstadoLicitacion.from_codigo(nuevo_codigo)
-            mock_celery.send_task(
-                "tasks.notifications.emit_licitacion_state_change",
-                args=[
-                    licitacion_codigo,
-                    mock_licitacion.estado,
-                    nuevo_estado_enum.estado_interno,
-                ],
-            )
-
-        mock_send_task.assert_called_once_with(
-            "tasks.notifications.emit_licitacion_state_change",
-            args=[licitacion_codigo, "publicada", "cerrada"],
-        )
+    assert _should_emit_state_alert(existing_codigo=5, new_codigo=6, flag_activo=True) is True
 
 
 # ---------------------------------------------------------------------------
-# Test 2: sync no encola si no hay cambio de estado
+# Test 2: guard retorna False cuando el estado no cambia
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_sync_no_encola_sin_cambio_estado(
-    empresa_con_pipeline: dict[str, object],
-) -> None:
-    """Si estado_codigo no cambia, send_task NO se llama aunque el hash sea distinto."""
-    licitacion_codigo = str(empresa_con_pipeline["licitacion_codigo"])
+def test_sync_no_encola_sin_cambio_estado() -> None:
+    """_should_emit_state_alert retorna False cuando estado_codigo no cambia."""
+    from app.tasks.sync_chilecompra import _should_emit_state_alert
 
-    with patch("app.tasks.sync_chilecompra.celery_app") as mock_celery, \
-         patch("app.tasks.sync_chilecompra.settings") as mock_settings:
-        mock_settings.feature_licitacion_state_alerts = True
-
-        mock_licitacion = MagicMock()
-        mock_licitacion.estado_codigo = 5  # publicada — sin cambio
-        mock_licitacion.estado = "publicada"
-        mock_licitacion.hash_contenido = "hash_viejo"
-
-        mock_send_task = MagicMock()
-        mock_celery.send_task = mock_send_task
-
-        nuevo_codigo = 5  # mismo que el actual — sin cambio de estado
-
-        if (
-            mock_settings.feature_licitacion_state_alerts
-            and mock_licitacion.estado_codigo is not None
-            and mock_licitacion.estado_codigo != nuevo_codigo
-        ):
-            from app.services.chilecompra.enums import EstadoLicitacion
-
-            nuevo_estado_enum = EstadoLicitacion.from_codigo(nuevo_codigo)
-            mock_celery.send_task(
-                "tasks.notifications.emit_licitacion_state_change",
-                args=[
-                    licitacion_codigo,
-                    mock_licitacion.estado,
-                    nuevo_estado_enum.estado_interno,
-                ],
-            )
-
-        mock_send_task.assert_not_called()
+    assert _should_emit_state_alert(existing_codigo=5, new_codigo=5, flag_activo=True) is False
 
 
 # ---------------------------------------------------------------------------
-# Test 3: sync no encola si feature flag está apagado
+# Test 3: guard retorna False cuando el feature flag está apagado
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_sync_no_encola_sin_pipeline_activo(
-    empresa_con_pipeline: dict[str, object],
-) -> None:
-    """Con feature_licitacion_state_alerts=False, send_task NO se llama."""
-    licitacion_codigo = str(empresa_con_pipeline["licitacion_codigo"])
+def test_sync_no_encola_con_flag_apagado() -> None:
+    """_should_emit_state_alert retorna False cuando feature_licitacion_state_alerts=False."""
+    from app.tasks.sync_chilecompra import _should_emit_state_alert
 
-    with patch("app.tasks.sync_chilecompra.celery_app") as mock_celery, \
-         patch("app.tasks.sync_chilecompra.settings") as mock_settings:
-        mock_settings.feature_licitacion_state_alerts = False  # FLAG APAGADO
-
-        mock_licitacion = MagicMock()
-        mock_licitacion.estado_codigo = 5
-        mock_licitacion.estado = "publicada"
-        mock_licitacion.hash_contenido = "hash_viejo"
-
-        mock_send_task = MagicMock()
-        mock_celery.send_task = mock_send_task
-
-        nuevo_codigo = 6  # cambio real de estado
-
-        if (
-            mock_settings.feature_licitacion_state_alerts
-            and mock_licitacion.estado_codigo is not None
-            and mock_licitacion.estado_codigo != nuevo_codigo
-        ):
-            from app.services.chilecompra.enums import EstadoLicitacion
-
-            nuevo_estado_enum = EstadoLicitacion.from_codigo(nuevo_codigo)
-            mock_celery.send_task(
-                "tasks.notifications.emit_licitacion_state_change",
-                args=[
-                    licitacion_codigo,
-                    mock_licitacion.estado,
-                    nuevo_estado_enum.estado_interno,
-                ],
-            )
-
-        mock_send_task.assert_not_called()
+    assert _should_emit_state_alert(existing_codigo=5, new_codigo=6, flag_activo=False) is False
 
 
 # ---------------------------------------------------------------------------

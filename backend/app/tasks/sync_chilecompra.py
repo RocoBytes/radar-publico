@@ -47,6 +47,15 @@ def _hash_licitacion(codigo: str, nombre: str, estado_codigo: int | None) -> str
     return hashlib.sha256(content.encode()).hexdigest()
 
 
+def _should_emit_state_alert(
+    existing_codigo: int | None,
+    new_codigo: int | None,
+    flag_activo: bool,
+) -> bool:
+    """Determina si corresponde encolar una alerta de cambio de estado externo."""
+    return flag_activo and existing_codigo is not None and existing_codigo != new_codigo
+
+
 async def _sync_empresa(
     empresa_id: str,
     ticket_cifrado: str,
@@ -106,10 +115,10 @@ async def _sync_empresa(
                             stats["sin_cambio"] += 1
                             continue
                         # Detectar cambio de estado y encolar notificación (no bloquea sync)
-                        if (
-                            settings.feature_licitacion_state_alerts
-                            and existing.estado_codigo is not None
-                            and existing.estado_codigo != item.CodigoEstado
+                        if _should_emit_state_alert(
+                            existing.estado_codigo,
+                            item.CodigoEstado,
+                            settings.feature_licitacion_state_alerts,
                         ):
                             nuevo_estado_enum = EstadoLicitacion.from_codigo(
                                 item.CodigoEstado or 5
