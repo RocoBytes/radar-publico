@@ -17,6 +17,7 @@ import {
 import type { PipelineEstado } from "@/types/pipeline"
 import { features } from "@/lib/features"
 import { ChecklistSection } from "@/components/feature/pipeline/checklist-section"
+import { ScoreBadge } from "@/components/feature/pipeline/score-badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
@@ -60,24 +61,6 @@ const ESTADO_BADGE_CLASE: Record<PipelineEstado, string> = {
   ganada: "bg-green-100 text-green-800 border-green-200",
   perdida: "bg-red-100 text-red-800 border-red-200",
   descartada: "bg-red-100 text-red-800 border-red-200",
-}
-
-function ScoreBadge({ score }: { score: number | null }) {
-  if (score === null) return null
-  const claseColor =
-    score >= 70
-      ? "bg-green-100 text-green-800 border-green-300"
-      : score >= 40
-        ? "bg-yellow-100 text-yellow-800 border-yellow-300"
-        : "bg-slate-100 text-slate-600 border-slate-200"
-
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-bold ${claseColor}`}
-    >
-      Score: {score}
-    </span>
-  )
 }
 
 function formatFechaHora(fecha: string): string {
@@ -200,7 +183,7 @@ export function PipelineItemClient({ id }: PipelineItemClientProps) {
           >
             {data.estado.charAt(0).toUpperCase() + data.estado.slice(1)}
           </span>
-          <ScoreBadge score={data.score} />
+          <ScoreBadge score={data.score} justificacion={data.score_justificacion} />
         </div>
         <h1 className="text-xl font-semibold leading-snug">{data.licitacion.nombre}</h1>
         <p className="text-sm text-muted-foreground">

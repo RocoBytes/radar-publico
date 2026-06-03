@@ -1,3 +1,18 @@
+export type ScoreRegionRazon = "match" | "no_match" | "nacional" | "sin_datos"
+
+export type ScoreComponenteUnspsc = { puntos: number; max: number; matches: string[] }
+export type ScoreComponenteRegion = { puntos: number; max: number; razon: ScoreRegionRazon }
+export type ScoreComponenteKeywords = { puntos: number; max: number; matches: string[] }
+export type ScoreComponenteSemantico = { puntos: number; max: number; similitud: number | null }
+
+export type ScoreJustificacion = {
+  unspsc?: ScoreComponenteUnspsc
+  region?: ScoreComponenteRegion
+  keywords?: ScoreComponenteKeywords
+  semantico?: ScoreComponenteSemantico
+  total: number
+}
+
 export type PipelineEstado =
   | "nueva"
   | "evaluando"
@@ -30,7 +45,7 @@ export type PipelineListItem = {
   id: string
   estado: PipelineEstado
   score: number | null
-  score_justificacion: Record<string, unknown> | null
+  score_justificacion: ScoreJustificacion | null
   razon_descarte: string | null
   monto_postulado: number | null
   resultado_observaciones: string | null
