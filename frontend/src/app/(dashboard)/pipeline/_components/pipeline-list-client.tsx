@@ -9,6 +9,7 @@ import { Download, Loader2, MessageSquare } from "lucide-react"
 import { getPipeline } from "@/lib/api"
 import { downloadCsv } from "@/lib/csv"
 import type { PipelineEstado } from "@/types/pipeline"
+import { ScoreBadge } from "@/components/feature/pipeline/score-badge"
 import {
   Select,
   SelectContent,
@@ -43,29 +44,6 @@ const ESTADO_BADGE_CLASE: Record<PipelineEstado, string> = {
   descartada: "bg-red-100 text-red-800 border-red-200",
 }
 
-function ScoreBadge({ score }: { score: number | null }) {
-  if (score === null) {
-    return (
-      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 text-sm font-semibold border border-slate-200">
-        —
-      </span>
-    )
-  }
-  const claseColor =
-    score >= 70
-      ? "bg-green-100 text-green-800 border-green-300"
-      : score >= 40
-        ? "bg-yellow-100 text-yellow-800 border-yellow-300"
-        : "bg-slate-100 text-slate-600 border-slate-200"
-
-  return (
-    <span
-      className={`inline-flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold border ${claseColor}`}
-    >
-      {score}
-    </span>
-  )
-}
 
 function PipelineCardSkeleton() {
   return (
@@ -225,8 +203,8 @@ export function PipelineListClient() {
             >
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
-                  <div className="shrink-0">
-                    <ScoreBadge score={item.score} />
+                  <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <ScoreBadge score={item.score} justificacion={item.score_justificacion} />
                   </div>
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <p className="font-medium leading-snug truncate">
