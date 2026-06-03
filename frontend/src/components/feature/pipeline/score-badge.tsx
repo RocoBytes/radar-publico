@@ -54,7 +54,7 @@ export function ScoreBadge({ score, justificacion }: ScoreBadgeProps) {
           <DialogHeader>
             <DialogTitle>Desglose del Score</DialogTitle>
           </DialogHeader>
-          <ScoreBreakdown score={score} justificacion={justificacion} />
+          <ScoreBreakdown justificacion={justificacion} />
         </DialogContent>
       </Dialog>
     </>

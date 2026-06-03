@@ -1,3 +1,5 @@
+"use client"
+
 import { Separator } from "@/components/ui/separator"
 import type { ScoreJustificacion, ScoreRegionRazon } from "@/types/pipeline"
 
@@ -19,7 +21,7 @@ function ScoreRow({ label, puntos, max, children }: ScoreRowProps) {
       </div>
       <div className="h-2 w-full rounded bg-slate-100 overflow-hidden">
         <div
-          style={{ width: `${Math.round((puntos / max) * 100)}%` }}
+          style={{ width: `${max > 0 ? Math.round((puntos / max) * 100) : 0}%` }}
           className="h-full bg-primary transition-all"
           role="progressbar"
           aria-valuenow={puntos}
@@ -41,7 +43,6 @@ const REGION_MENSAJE: Record<ScoreRegionRazon, string> = {
 }
 
 interface ScoreBreakdownProps {
-  score: number | null
   justificacion: ScoreJustificacion | null
 }
 
