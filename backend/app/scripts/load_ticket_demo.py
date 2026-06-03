@@ -30,7 +30,6 @@ async def main() -> None:
     admin_id = uuid.UUID("10fce1ce-ea33-41c6-b8a2-af54bdeffd01")  # admin@radarpublico.cl
 
     async with AsyncSessionLocal() as session:
-        session: AsyncSession
         svc = AdminService(session)
         ticket_obj = await svc.cargar_ticket(
             usuario_id=usuario_id,

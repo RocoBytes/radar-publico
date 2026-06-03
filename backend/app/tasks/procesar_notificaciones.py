@@ -214,7 +214,7 @@ async def _procesar_notificaciones() -> dict[str, int]:
     return stats
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.procesar_notificaciones.procesar_notificaciones",
     bind=True,
     acks_late=True,

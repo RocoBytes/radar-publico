@@ -249,7 +249,7 @@ async def _run(codigo: str) -> dict[str, Any]:
     return stats
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.analizar_bases.analizar_bases_licitacion",
     bind=True,
     autoretry_for=(LLMError,),

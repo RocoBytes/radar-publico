@@ -117,7 +117,7 @@ async def _run(codigo: str) -> dict[str, int]:
     return stats
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.embed_licitacion.embed_licitacion",
     bind=True,
     autoretry_for=(EmbeddingError,),

@@ -73,7 +73,7 @@ async def embed_batch(
     if not textos:
         return []
 
-    client = voyageai.AsyncClient(api_key=settings.voyage_api_key)  # type: ignore[attr-defined]
+    client = voyageai.AsyncClient(api_key=settings.voyage_api_key)
     max_batch = settings.voyage_max_batch_size
     modelo = settings.voyage_model
 
@@ -97,7 +97,7 @@ async def embed_batch(
                 model=modelo,
                 input_type=input_type,
             )
-            embeddings_acumulados.extend(resultado.embeddings)  # type: ignore[arg-type]
+            embeddings_acumulados.extend(resultado.embeddings)
     except Exception as exc:
         if _es_rate_limit(exc):
             log.warning("voyage_rate_limit", error=str(exc))

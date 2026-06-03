@@ -222,7 +222,7 @@ async def _fan_out() -> dict[str, Any]:
     return {"radares_encolados": len(radar_ids)}
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.ejecuta_radares.ejecutar_radar",
     bind=True,
     acks_late=True,
@@ -245,7 +245,7 @@ def ejecutar_radar(self: Any, radar_id: str) -> dict[str, int]:
     return result
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.ejecuta_radares.ejecuta_radares_diarios",
     acks_late=True,
 )

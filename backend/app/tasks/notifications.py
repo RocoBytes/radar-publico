@@ -18,7 +18,7 @@ from app.config import settings
 logger = structlog.get_logger()
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.notifications.emit_licitacion_state_change",
     bind=True,
     max_retries=3,

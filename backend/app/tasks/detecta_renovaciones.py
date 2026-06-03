@@ -109,7 +109,7 @@ async def _run() -> dict[str, int]:
     return stats
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.detecta_renovaciones.detecta_renovaciones",
     acks_late=True,
 )

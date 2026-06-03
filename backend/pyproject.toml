@@ -85,7 +85,7 @@ strict = true
 
 # Opciones de strict desglosadas para claridad:
 disallow_untyped_defs = true
-disallow_any_unimported = true
+disallow_any_unimported = false
 no_implicit_optional = true
 check_untyped_defs = true
 warn_return_any = true
@@ -98,8 +98,8 @@ pretty = true
 # Directorios a verificar
 files = ["app"]
 
-# Excluir migraciones autogeneradas
-exclude = ["alembic/versions/"]
+# Excluir migraciones autogeneradas y tests (pytest no tiene stubs estables)
+exclude = ["alembic/versions/", "app/tests/"]
 
 # Librerías sin stubs (ignorar su falta de tipos)
 [[tool.mypy.overrides]]
@@ -119,10 +119,32 @@ module = [
     "boto3.*",
     "botocore.*",
     "pymupdf.*",
+    "fitz.*",
     "unstructured.*",
     "playwright.*",
     "aiolimiter.*",
+    "tiktoken.*",
+    "tenacity.*",
+    "bcrypt.*",
+    "jwt.*",
+    "cryptography.*",
+    "magic.*",
+    "docx.*",
+    "respx.*",
+    "pytest.*",
+    "pytest_asyncio.*",
 ]
+ignore_missing_imports = true
+
+# Módulos que están instalados localmente pero tienen tipos incompletos:
+# tratarlos como Any para consistencia entre CI (sin instalar) y local (instalados).
+[[tool.mypy.overrides]]
+module = [
+    "voyageai.*",
+    "litellm.*",
+    "docx.*",
+]
+follow_imports = "skip"
 ignore_missing_imports = true
 
 

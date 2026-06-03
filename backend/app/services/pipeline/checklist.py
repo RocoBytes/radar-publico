@@ -267,7 +267,7 @@ async def bootstrap_from_analysis(
                 "now": now,
             },
         )
-        rows_affected = result.rowcount
+        rows_affected = result.rowcount  # type: ignore[attr-defined]
         if rows_affected > 0:
             creados += 1
         else:

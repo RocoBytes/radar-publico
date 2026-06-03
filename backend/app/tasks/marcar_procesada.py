@@ -71,7 +71,7 @@ async def _run(codigo: str) -> dict[str, int]:
     return stats
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.marcar_procesada.marcar_licitacion_procesada",
     bind=True,
     max_retries=3,

@@ -119,7 +119,7 @@ async def _fan_out() -> dict[str, Any]:
     return {"empresas_encoladas": len(empresa_ids)}
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.recalcula_scores.recalcula_scores_empresa",
     bind=True,
     acks_late=True,
@@ -142,7 +142,7 @@ def recalcula_scores_empresa(self: Any, empresa_id: str) -> dict[str, int]:
     return result
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.recalcula_scores.recalcula_scores_todas",
     acks_late=True,
 )

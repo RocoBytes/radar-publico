@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import hashlib
 import io
 
-import fitz  # type: ignore[import-untyped]  # pymupdf
+import fitz  # pymupdf
 import magic
 import structlog
 

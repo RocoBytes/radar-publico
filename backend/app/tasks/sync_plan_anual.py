@@ -95,7 +95,7 @@ async def _get_pagina_plan_anual(
         response = await http.get(_PAC_ENDPOINT, params=params)
 
         if response.status_code == 200:
-            return response.json()  # type: ignore[return-value]
+            return response.json()  # type: ignore[no-any-return]
 
         if response.status_code == 429:
             # Rate limit de ChileCompra — esperar 60s antes de reintentar
@@ -413,7 +413,7 @@ async def _run(ano: int | None) -> dict[str, object]:
     return {"empresas": len(tickets), "anos": anos, "total": total}
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.sync_plan_anual.sync_plan_anual",
     bind=True,
     max_retries=3,

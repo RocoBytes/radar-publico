@@ -295,7 +295,7 @@ def _formatear_empresa(
     return "\n".join(lineas)
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.generar_borrador.generar_borrador_propuesta",
     bind=True,
     autoretry_for=(LLMError,),

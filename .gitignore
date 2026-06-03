@@ -152,7 +152,7 @@ temp/
 
 # === Storage local (uploads en dev) ===
 uploads/
-storage/
+/storage/
 
 # === Secrets y certificados ===
 *.pem

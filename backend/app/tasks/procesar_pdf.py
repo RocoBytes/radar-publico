@@ -171,7 +171,7 @@ async def _run(documento_id: str) -> dict[str, int]:
     return stats
 
 
-@celery_app.task(  # type: ignore[misc]
+@celery_app.task(  # type: ignore[untyped-decorator]
     name="tasks.procesar_pdf.procesar_pdf_documento",
     bind=True,
     autoretry_for=(R2UploadError, PdfParseError),

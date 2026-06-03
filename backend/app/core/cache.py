@@ -28,7 +28,7 @@ def _get_pool() -> aioredis.ConnectionPool:
         current_loop = None
 
     if _pool is None or _pool_loop is not current_loop:
-        _pool = aioredis.ConnectionPool.from_url(  # type: ignore[no-untyped-call]
+        _pool = aioredis.ConnectionPool.from_url(
             settings.redis_url,
             decode_responses=True,
             max_connections=10,
@@ -37,12 +37,12 @@ def _get_pool() -> aioredis.ConnectionPool:
     return _pool
 
 
-def _client() -> aioredis.Redis:  # type: ignore[type-arg]
+def _client() -> aioredis.Redis:
     return aioredis.Redis(connection_pool=_get_pool())
 
 
 async def get(key: str) -> str | None:
-    return await _client().get(key)  # type: ignore[return-value]
+    return await _client().get(key)  # type: ignore[no-any-return]
 
 
 async def set(key: str, value: str, ex: int = 30) -> None:
