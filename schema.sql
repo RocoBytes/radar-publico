@@ -456,6 +456,7 @@ CREATE TABLE pipeline_items (
   monto_postulado numeric(18, 2),
   resultado_observaciones text,
   detected_by_radar_id uuid REFERENCES radares(id) ON DELETE SET NULL,
+  ultimo_estado_licitacion licitacion_estado,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (empresa_id, licitacion_codigo)
