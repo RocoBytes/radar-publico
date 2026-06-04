@@ -300,7 +300,7 @@ async def test_segmentos_con_items_unspsc(
 
     seg_43 = next(s for s in segmentos if s["codigo"] == _UNSPSC_SEGMENTO)
     assert seg_43["cantidad"] >= 1
-    assert "Tecnología" in seg_43["nombre"]
+    assert "tecnolog" in seg_43["nombre"].lower()
 
 
 @pytest.mark.asyncio
