@@ -131,6 +131,7 @@ module = [
     "magic.*",
     "docx.*",
     "respx.*",
+    "numpy.*",
     "pytest.*",
     "pytest_asyncio.*",
 ]
