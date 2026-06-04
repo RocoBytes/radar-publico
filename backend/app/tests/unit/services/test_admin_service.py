@@ -88,9 +88,9 @@ class TestCrearCuenta:
         session = _make_session()
         mock_usuario_reload = _make_usuario(email="nuevo@example.cl")
         session.execute.side_effect = [
-            _scalar_result(None),                    # email no existe
-            _scalar_result(None),                    # rut no existe
-            _scalar_result(mock_usuario_reload),     # reload usuario tras commit
+            _scalar_result(None),  # email no existe
+            _scalar_result(None),  # rut no existe
+            _scalar_result(mock_usuario_reload),  # reload usuario tras commit
         ]
 
         with (
