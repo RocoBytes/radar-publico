@@ -1,7 +1,5 @@
 """Tests unitarios para app.services.pdf.parser."""
 
-from unittest.mock import patch
-
 import fitz  # type: ignore[import-untyped]
 import pytest
 
@@ -102,14 +100,7 @@ async def test_parsear_pdf_escaneado() -> None:
     """Debe lanzar PdfEscaneadoError cuando el PDF no tiene texto extraíble."""
     pdf_sin_texto = _crear_pdf_sin_texto(num_paginas=2)
 
-    # Mockear partition_pdf para simular que unstructured tampoco extrae nada
-    with (
-        patch(
-            "app.services.pdf.parser._extraer_con_unstructured",
-            return_value=[],
-        ),
-        pytest.raises(PdfEscaneadoError),
-    ):
+    with pytest.raises(PdfEscaneadoError):
         await parsear_pdf(pdf_sin_texto)
 
 
