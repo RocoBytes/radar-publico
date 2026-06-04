@@ -1,6 +1,6 @@
 """Búsqueda vectorial sobre documento_chunks con pgvector."""
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -21,8 +21,9 @@ async def buscar_chunks_similares(
     """Busca los chunks más similares al query usando cosine distance (pgvector).
 
     1. Embebe el query con Voyage AI (input_type="query").
-    2. Ordena los chunks por distancia coseno ascendente (operador <=> de pgvector).
-    3. Retorna los top_k más similares.
+    2. Configura ef_search=100 para mayor recall en el índice HNSW.
+    3. Ordena los chunks por distancia coseno ascendente (operador <=> de pgvector).
+    4. Retorna los top_k más similares.
 
     Args:
         db: Sesión async de SQLAlchemy.
@@ -35,6 +36,10 @@ async def buscar_chunks_similares(
     """
     vectores = await embed_batch([query_text], input_type="query")
     query_vec = vectores[0]
+
+    # Aumentar ef_search para mejor recall en el índice HNSW de 1024 dims.
+    # SET LOCAL limita el efecto a esta transacción únicamente.
+    await db.execute(text("SET LOCAL hnsw.ef_search = 100"))
 
     result = await db.execute(
         select(DocumentoChunk)

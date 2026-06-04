@@ -15,6 +15,7 @@ from sqlalchemy.orm import joinedload, selectinload
 import structlog
 
 from app.api.deps import CurrentUser, DbDep  # noqa: TCH001
+from app.celery_app import celery_app
 from app.models.enums import LicitacionEstado  # noqa: TCH001
 from app.models.licitacion import Licitacion, LicitacionItem
 from app.models.organismo import Organismo
@@ -158,6 +159,14 @@ async def listar_licitaciones(
         item = LicitacionListItem.model_validate(licitacion)
         item.organismo_nombre = organismo_nombre
         items.append(item)
+        # Encolar sync de detalle en background para licitaciones no sincronizadas.
+        # Cuando el usuario abra el registro desde el listado, la tarea ya estará
+        # en progreso o completada.
+        if licitacion.detalle_sincronizado_at is None:
+            celery_app.send_task(
+                "tasks.sync_detalle.sync_detalle_licitacion",
+                args=[licitacion.codigo],
+            )
 
     return LicitacionListResponse(
         items=items,
@@ -195,27 +204,19 @@ async def obtener_licitacion(
             detail=f"Licitación '{codigo}' no encontrada",
         )
 
-    # Sync-on-access síncrono: si el detalle no existe, llamar a la API ahora
-    # mismo en el mismo request. El usuario espera una vez (3-10 s típico) y
-    # las visitas siguientes van directo desde BD.
+    # Si el detalle no está sincronizado, encolar la tarea en background y
+    # retornar inmediatamente con los datos parciales disponibles. El cliente
+    # debe reintentar cuando detalle_pendiente es True.
     if licitacion.detalle_sincronizado_at is None:
-        try:
-            from app.tasks.sync_detalle import _run as _sync_detalle
-
-            await _sync_detalle(codigo, skip_engine_dispose=True)
-            # Expirar la sesión para que la re-query traiga datos frescos
-            db.expire_all()
-            fresh = (await db.execute(stmt)).unique().scalar_one_or_none()
-            if fresh is not None:
-                licitacion = fresh
-        except Exception as exc:
-            logger.warning(
-                "sync_on_access_failed",
-                codigo=codigo,
-                error=str(exc),
-            )
+        celery_app.send_task(
+            "tasks.sync_detalle.sync_detalle_licitacion",
+            args=[codigo],
+        )
+        logger.debug("sync_detalle_enqueued", codigo=codigo)
 
     response = LicitacionDetalleResponse.model_validate(licitacion)
+    if licitacion.detalle_sincronizado_at is None:
+        response.detalle_pendiente = True
     if licitacion.organismo is not None:
         org = licitacion.organismo
         response.organismo_nombre = org.nombre
