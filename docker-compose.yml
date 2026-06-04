@@ -83,6 +83,8 @@ services:
       R2_BUCKET: ${R2_BUCKET:-radar-publico-dev}
       R2_ENDPOINT: ${R2_ENDPOINT}
       SENTRY_DSN: ${SENTRY_DSN}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ENVIRONMENT: development
       LOG_LEVEL: DEBUG
       CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000

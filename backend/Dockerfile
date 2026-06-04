@@ -60,7 +60,8 @@ FROM base AS development
 
 # Copiar el venv ya construido con todas las dependencias
 COPY --from=builder /app/.venv /app/.venv
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app
 
 # El código fuente se monta como volumen en docker-compose,
 # pero copiamos aquí para que la imagen sea self-contained
@@ -120,7 +121,8 @@ FROM base AS production
 RUN groupadd -r radar && useradd -r -g radar -d /app -s /bin/bash radar
 
 COPY --from=builder /app/.venv /app/.venv
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app
 
 COPY --chown=radar:radar . .
 

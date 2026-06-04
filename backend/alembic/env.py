@@ -6,6 +6,10 @@ para evitar importar la app completa durante las migraciones).
 
 from logging.config import fileConfig
 import os
+import sys
+
+# Garantiza que /app esté en sys.path independientemente de cómo se invoque alembic
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import engine_from_config, pool
 

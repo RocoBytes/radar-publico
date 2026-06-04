@@ -101,7 +101,7 @@ migrate-create:
 	docker compose exec api alembic revision --autogenerate -m "$$name"
 
 seed:
-	docker compose exec api python -m app.scripts.seed
+	docker compose exec api python -m app.scripts.seed --all
 
 backup:
 	@mkdir -p backups

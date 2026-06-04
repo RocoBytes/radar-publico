@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV === "development";
+
 const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
@@ -24,13 +26,18 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self'",
+              // unsafe-eval + unsafe-inline requeridos por webpack HMR y RSC en desarrollo
+              isDev
+                ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
+                : "script-src 'self'",
+              // blob: requerido por webpack workers en desarrollo
+              isDev ? "worker-src blob:" : "",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
-              `connect-src 'self' ${[apiUrl, "https://*.sentry.io"].filter(Boolean).join(" ")}`,
+              `connect-src 'self' ${[apiUrl, "https://*.sentry.io", isDev ? "ws://localhost:3000" : ""].filter(Boolean).join(" ")}`,
               "font-src 'self'",
               "frame-ancestors 'none'",
-            ].join("; "),
+            ].filter(Boolean).join("; "),
           },
         ],
       },

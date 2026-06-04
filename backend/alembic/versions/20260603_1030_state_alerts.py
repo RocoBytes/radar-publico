@@ -40,10 +40,14 @@ def upgrade() -> None:
         "ALTER TYPE notif_tipo ADD VALUE IF NOT EXISTS 'cambio_estado_interno';"
     )
 
+    # PostgreSQL marca el nuevo value como "pending" dentro de la transacción actual.
+    # No se puede usar hasta que esa transacción haga COMMIT. Se commitea explícitamente
+    # para que el UPDATE del paso 3 pueda referenciar el nuevo value.
+    op.get_bind().execute(sa.text("COMMIT"))
+
     # 3. Reclasificar histórico: todas las notificaciones existentes con el
     #    value (ahora renombrado) fueron generadas por acciones internas del
     #    usuario en pipeline.py — no por ChileCompra. Se pasan a cambio_estado_interno.
-    #    COMMIT implícito necesario para que ADD VALUE sea visible antes del UPDATE.
     op.execute("""
         UPDATE notificaciones
            SET tipo = 'cambio_estado_interno'
