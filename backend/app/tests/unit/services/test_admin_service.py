@@ -86,9 +86,11 @@ class TestCrearCuenta:
     async def test_crear_cuenta_ok(self) -> None:
         """Happy path: crea usuario + empresa, retorna contraseña temporal."""
         session = _make_session()
+        mock_usuario_reload = _make_usuario(email="nuevo@example.cl")
         session.execute.side_effect = [
-            _scalar_result(None),  # email no existe
-            _scalar_result(None),  # rut no existe
+            _scalar_result(None),                    # email no existe
+            _scalar_result(None),                    # rut no existe
+            _scalar_result(mock_usuario_reload),     # reload usuario tras commit
         ]
 
         with (

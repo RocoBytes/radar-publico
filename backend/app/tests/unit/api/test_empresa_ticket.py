@@ -201,12 +201,13 @@ async def test_ticket_status_404_sin_empresa(
     make_user: Callable[..., Any],
 ) -> None:
     """Usuario sin empresa asociada → 404."""
-    # make_user sin with_empresa=True crea un usuario huérfano (sin empresa)
+    # make_user con with_empresa=False crea un usuario huérfano (sin empresa)
     user: Any = await make_user(
         email="sin_empresa_ticket@example.cl",
         rol=UserRole.proveedor,
         status=UserStatus.active,
         must_change_password=False,
+        with_empresa=False,  # sin empresa → el endpoint debe retornar 404
     )
 
     r = await client.get(
