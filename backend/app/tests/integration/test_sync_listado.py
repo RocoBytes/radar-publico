@@ -82,6 +82,7 @@ async def empresa_prueba() -> AsyncGenerator[dict[str, str], None]:
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="Requiere API ChileCompra sin rate-limit — ejecutar manualmente")
 async def test_sync_listado_trae_licitaciones(empresa_prueba: dict[str, str]) -> None:
     """Verifica que el sync trae licitaciones y las persiste correctamente."""
     from app.services.chilecompra.client import MercadoPublicoClient
