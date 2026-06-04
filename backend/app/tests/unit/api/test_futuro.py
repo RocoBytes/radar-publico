@@ -56,9 +56,7 @@ async def _limpieza(db_session: AsyncSession) -> None:  # type: ignore[misc]
         await db_session.execute(
             delete(PlanAnualLinea).where(PlanAnualLinea.descripcion.like("TEST-PAC%"))
         )
-        await db_session.execute(
-            delete(Unspsc).where(Unspsc.codigo.in_(["73101500", "80101500"]))
-        )
+        await db_session.execute(delete(Unspsc).where(Unspsc.codigo.in_(["73101500", "80101500"])))
         await db_session.commit()
 
     await _borrar()
