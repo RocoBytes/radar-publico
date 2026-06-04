@@ -6,15 +6,12 @@ y por el endpoint de bootstrap POST /pipeline/{id}/checklist/bootstrap-from-anal
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime  # noqa: TCH003
-from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import ChecklistItemEstado, ChecklistItemOrigen  # noqa: TCH001
-
-if TYPE_CHECKING:
-    import uuid
 
 
 class ChecklistItemBase(BaseModel):
