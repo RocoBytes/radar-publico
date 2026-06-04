@@ -200,6 +200,16 @@ jobs:
         run: alembic upgrade head
         working-directory: backend
 
+      - name: Cargar catálogos (seed)
+        env:
+          DATABASE_URL: postgresql+asyncpg://radar:radar_test_password@localhost:5432/radar_test
+          DATABASE_URL_SYNC: postgresql://radar:radar_test_password@localhost:5432/radar_test
+          JWT_SECRET: test_jwt_secret_min_32_chars_long
+          ENCRYPTION_KEY: test_encryption_key_32_bytes____
+          ENVIRONMENT: test
+        run: python -m app.scripts.seed --catalogos
+        working-directory: backend
+
       - name: Correr pytest
         env:
           DATABASE_URL: postgresql+asyncpg://radar:radar_test_password@localhost:5432/radar_test
