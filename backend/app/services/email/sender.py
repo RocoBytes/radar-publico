@@ -37,7 +37,10 @@ def _send_smtp_sync(
 
 
 async def send_email(to: str, subject: str, html: str, text: str) -> None:
-    """Envía un email. En dev usa MailHog; en prod usa Resend."""
+    """Envía un email. En test no-op; en dev usa MailHog; en prod usa Resend."""
+    if settings.environment == "test":
+        logger.info("email_skipped_test_env", subject=subject)
+        return
     if settings.is_production:
         resend.api_key = settings.resend_api_key
         await asyncio.get_event_loop().run_in_executor(
