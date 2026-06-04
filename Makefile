@@ -125,6 +125,7 @@ prod-deploy:
 	@echo "Desplegando a producción..."
 	git pull origin main
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml build
+	docker image prune -f
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm api alembic upgrade head
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 	@echo "✓ Despliegue completado"

@@ -5,12 +5,20 @@ import { Sidebar } from "@/components/layout/sidebar"
 
 /**
  * Layout protegido del dashboard.
- * - Sin sesión válida → redirect a /login (middleware lo intercepta primero)
- * - Con must_change_password=true → redirect a /change-password
- * - Sin onboarding completado → redirect a /onboarding
+ *
+ * El middleware (src/middleware.ts) garantiza que:
+ * - Si no hay access_token válido y el refresh falla → redirect a /login (antes de llegar aquí)
+ * - Si el access_token expiró pero había refresh_token → el middleware ya renovó la cookie
+ *
+ * Por eso este layout puede asumir que el access_token es válido y hacer
+ * solo un fetch a /auth/me sin lógica de refresh duplicada.
+ *
+ * Redirects adicionales que maneja este layout:
+ * - must_change_password=true → redirect a /change-password
+ * - onboarding no completado → redirect a /onboarding
  *
  * onboarding_completado viene incluido en /auth/me (EmpresaBasica),
- * eliminando la segunda llamada a /empresa/me que existía antes.
+ * eliminando la necesidad de una segunda llamada a /empresa/me.
  */
 export default async function DashboardLayout({
   children,
@@ -28,42 +36,12 @@ export default async function DashboardLayout({
   try {
     user = await getMe(accessToken)
   } catch (error) {
+    // 401 aquí significa que el token que llegó del middleware ya no es válido
+    // en el backend (revocado, o desfase de tiempo). Redirigir a login.
     if (error instanceof ApiError && error.status === 401) {
-      const internalApi =
-        process.env["INTERNAL_API_URL"] ?? "http://localhost:8000"
-      const refreshToken = cookieStore.get("refresh_token")?.value
-
-      if (!refreshToken) {
-        redirect("/login")
-      }
-
-      const refreshResponse = await fetch(`${internalApi}/api/v1/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      }).catch(() => null)
-
-      if (!refreshResponse?.ok) {
-        redirect("/login")
-      }
-
-      const refreshData = (await refreshResponse.json().catch(() => null)) as {
-        access_token?: string
-      } | null
-      const newToken = refreshData?.access_token
-
-      if (!newToken) {
-        redirect("/login")
-      }
-
-      try {
-        user = await getMe(newToken)
-      } catch {
-        redirect("/login")
-      }
-    } else {
       redirect("/login")
     }
+    redirect("/login")
   }
 
   if (user.must_change_password) {

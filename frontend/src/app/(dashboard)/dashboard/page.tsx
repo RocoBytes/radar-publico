@@ -1,7 +1,24 @@
+import dynamic from "next/dynamic"
 import { KpiCards } from "./_components/kpi-cards"
-import { SegmentosChart } from "./_components/segmentos-chart"
 import { TopOportunidades } from "./_components/top-oportunidades"
 import { CierresProximos } from "./_components/cierres-proximos"
+import { Skeleton } from "@/components/ui/skeleton"
+
+/**
+ * SegmentosChart usa recharts (~400 kB). Se carga de forma lazy para que
+ * recharts no entre en el bundle inicial del dashboard.
+ * ssr: false porque recharts usa APIs del DOM que no existen en el servidor.
+ */
+const SegmentosChart = dynamic(
+  () =>
+    import("./_components/segmentos-chart").then((m) => ({
+      default: m.SegmentosChart,
+    })),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-[348px] w-full" />,
+  }
+)
 
 export default function DashboardPage() {
   return (

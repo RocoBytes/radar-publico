@@ -150,7 +150,7 @@ async def _run(codigo: str) -> dict[str, int]:
             celery_app.send_task(
                 "tasks.procesar_pdf.procesar_pdf_documento",
                 args=[doc_id],
-                queue="scraping",
+                queue="celery",
             )
             logger.debug("procesar_pdf_encolado", documento_id=doc_id)
 

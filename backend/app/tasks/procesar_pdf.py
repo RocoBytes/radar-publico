@@ -2,9 +2,10 @@
 
 Decisiones de diseño (Sprint 2, 2026-05-11):
 
-1. COLA SCRAPING: la tarea usa la queue 'scraping' junto con scrape_bases,
-   porque worker_scraper ya tiene pymupdf instalado como dependencia transitiva.
-   Evita levantar un worker extra solo para parseo.
+1. COLA DEFAULT: la tarea usa la queue default ('celery') consumida por los
+   4 workers generales. pymupdf está en requirements-prod.txt, disponible para
+   todos los workers. Esto libera los 2 workers del scraper (Playwright/Chromium)
+   para que solo hagan scraping del portal.
 
 2. IDEMPOTENCIA: si documentos_bases.status == 'procesado' → sin_cambio.
    Permite re-encolar sin duplicar chunks.
@@ -178,7 +179,7 @@ async def _run(documento_id: str) -> dict[str, int]:
     retry_backoff=True,
     max_retries=3,
     acks_late=True,
-    queue="scraping",
+    queue="celery",
 )
 def procesar_pdf_documento(self: Any, documento_id: str) -> dict[str, int]:
     """Parsea y chunkea un PDF descargado en R2.
@@ -187,6 +188,7 @@ def procesar_pdf_documento(self: Any, documento_id: str) -> dict[str, int]:
     con pymupdf, lo divide en chunks semánticos y persiste los chunks en
     documento_chunks (con embedding=NULL). Actualiza status a 'procesado'.
 
+    Corre en la queue default ('celery'), consumida por los 4 workers generales.
     Disparada automáticamente por scrape_bases_licitacion para cada
     documento con status='descargado'.
 
