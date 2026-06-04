@@ -220,7 +220,7 @@ async def test_campo_ultimo_estado_actualizado(
     )
     await db_session.commit()
 
-    await db_session.expire_all()
+    db_session.expire_all()
 
     items = (
         (

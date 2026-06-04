@@ -248,7 +248,7 @@ async def test_cascade_delete_pipeline_item(
         item_id = resp.json()["id"]
 
         # Verificar que el ítem existe en la BD
-        await db_session.expire_all()
+        db_session.expire_all()
         checklist_result = await db_session.execute(
             select(PipelineChecklistItem).where(PipelineChecklistItem.id == uuid.UUID(item_id))
         )
@@ -261,7 +261,7 @@ async def test_cascade_delete_pipeline_item(
             await db_session.commit()
 
         # Verificar que el checklist_item ya no existe (CASCADE funcionó)
-        await db_session.expire_all()
+        db_session.expire_all()
         checklist_result = await db_session.execute(
             select(PipelineChecklistItem).where(PipelineChecklistItem.id == uuid.UUID(item_id))
         )
