@@ -15,7 +15,6 @@ from app.db.session import AsyncSessionLocal
 from app.services.admin.service import AdminService
 
 
-
 async def main() -> None:
     ticket = os.environ.get("TICKET", "").strip()
     if not ticket:
