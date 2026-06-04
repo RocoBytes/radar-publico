@@ -6,8 +6,8 @@ y por el endpoint de bootstrap POST /pipeline/{id}/checklist/bootstrap-from-anal
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime  # noqa: TCH003
+import uuid  # noqa: TCH003
 
 from pydantic import BaseModel, ConfigDict, Field
 
