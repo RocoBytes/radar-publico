@@ -3,7 +3,6 @@
 import asyncio
 from dataclasses import dataclass
 import hashlib
-import io
 
 import fitz  # pymupdf
 import magic
@@ -51,20 +50,6 @@ def _promedio_chars(paginas: list[str]) -> float:
     return sum(len(p) for p in paginas) / len(paginas)
 
 
-def _extraer_con_unstructured(contenido: bytes) -> list[str]:
-    """Intenta extraer texto usando unstructured como fallback para PDFs escaneados.
-
-    Returns:
-        Lista con un único elemento que contiene todo el texto concatenado,
-        o lista vacía si no se extrajo nada.
-    """
-    from unstructured.partition.pdf import partition_pdf
-
-    elementos = partition_pdf(file=io.BytesIO(contenido))
-    texto = "\n\n".join(e.text for e in elementos if e.text and e.text.strip())
-    return [texto] if texto.strip() else []
-
-
 def _parsear_sincrono(contenido: bytes) -> ParsedPdf:
     """Parsea el PDF de forma síncrona (se invoca desde asyncio.to_thread).
 
@@ -88,10 +73,7 @@ def _parsear_sincrono(contenido: bytes) -> ParsedPdf:
             num_paginas=num_paginas,
             promedio_chars=round(_promedio_chars(paginas), 1),
         )
-        fallback = _extraer_con_unstructured(contenido)
-        if not fallback:
-            raise PdfEscaneadoError("PDF escaneado - OCR pendiente")
-        paginas = fallback
+        raise PdfEscaneadoError("PDF escaneado - OCR pendiente")
 
     # 4. SHA-256 del contenido binario
     hash_contenido = hashlib.sha256(contenido).hexdigest()

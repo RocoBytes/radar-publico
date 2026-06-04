@@ -96,12 +96,8 @@ WORKDIR /app
 # Instalar deps con pip del sistema de la imagen Playwright.
 # No copiamos el venv del builder (arm64) porque esta imagen puede correr
 # bajo emulación amd64 en Apple Silicon y los binarios serían incompatibles.
-COPY requirements.txt* requirements-prod.txt* ./
-RUN if [ -f requirements-prod.txt ]; then \
-        pip install --no-cache-dir -r requirements-prod.txt; \
-    elif [ -f requirements.txt ]; then \
-        pip install --no-cache-dir -r requirements.txt; \
-    fi
+COPY requirements-scraper.txt ./
+RUN pip install --no-cache-dir -r requirements-scraper.txt
 
 COPY . .
 

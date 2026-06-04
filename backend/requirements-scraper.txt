@@ -1,0 +1,42 @@
+# Radar Público — dependencias del worker_scraper (Playwright + parseo PDF)
+# Subset mínimo de requirements-prod.txt para mantener la imagen liviana.
+# No incluye: FastAPI, AI/LLM, auth, email, ni herramientas de API.
+
+# === Validación y settings ===
+pydantic==2.9.2
+pydantic-settings==2.6.0
+
+# === Base de datos ===
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+psycopg2-binary==2.9.9
+pgvector==0.3.6
+
+# === Cache y colas ===
+redis==5.1.1
+celery==5.4.0
+celery[redis]==5.4.0
+
+# === HTTP clients ===
+httpx==0.27.2
+tenacity==9.0.0
+aiolimiter==1.1.0
+
+# === Procesamiento de PDFs ===
+pymupdf==1.24.13
+python-magic==0.4.27
+
+# === Storage ===
+boto3==1.35.54
+
+# === Scraping ===
+playwright==1.49.0
+
+# === Observabilidad ===
+sentry-sdk[celery,sqlalchemy]==2.18.0
+structlog==24.4.0
+
+# === Utilidades ===
+python-dateutil==2.9.0.post0
+pytz==2024.2
+cryptography==43.0.3
