@@ -6,6 +6,8 @@ Las tareas se registran en app/tasks/.
 
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import task_prerun
+import structlog
 
 from app.config import settings
 
@@ -48,7 +50,24 @@ celery_app.conf.update(
     # task_acks_on_failure_or_timeout=False  # descomentear si necesitas rollback manual
 )
 
+
 # Beat schedule: sincronización cada 15 minutos (CLAUDE.md §6.3)
+@task_prerun.connect
+def reset_db_pool_before_task(**kwargs: object) -> None:
+    """Descarta el pool asyncpg ANTES de cada tarea para evitar 'Future attached to different loop'.
+
+    Cada asyncio.run() crea un event loop nuevo. El pool asyncpg (del task anterior) quedó atado
+    al loop anterior. engine.sync_engine.dispose() lo descarta de forma síncrona, sin necesitar
+    un loop nuevo. El próximo asyncio.run() creará conexiones frescas en su propio loop.
+    """
+    try:
+        from app.db.session import engine
+
+        engine.sync_engine.dispose()
+    except Exception:
+        structlog.get_logger().warning("dispose_db_pool_failed")
+
+
 celery_app.conf.beat_schedule = {
     "sync-listado-diario": {
         "task": "tasks.sync_chilecompra.sync_listado_diario",

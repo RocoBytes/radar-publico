@@ -78,7 +78,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload
 # (libnss3, libatk-bridge2.0-0, libxkbcommon0, libdrm2, etc.) en slim.
 # Imagen ~1.5 GB — solo se usa para el servicio worker_scraper.
 # ============================================================
-FROM mcr.microsoft.com/playwright/python:v1.48.0-jammy AS playwright
+FROM mcr.microsoft.com/playwright/python:v1.49.0-noble AS playwright
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
