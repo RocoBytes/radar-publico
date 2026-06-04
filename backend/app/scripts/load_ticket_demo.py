@@ -9,14 +9,11 @@ El ticket nunca se loggea ni se persiste en claro (regla de oro #2).
 import asyncio
 import os
 import sys
-from typing import TYPE_CHECKING
 import uuid
 
 from app.db.session import AsyncSessionLocal
 from app.services.admin.service import AdminService
 
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def main() -> None:
