@@ -46,6 +46,8 @@ async def _limpieza(db_session: AsyncSession) -> None:  # type: ignore[misc]
     from app.models.plan_anual import PlanAnualLinea
 
     async def _borrar() -> None:
+        from app.models.catalogos import Unspsc
+
         await db_session.execute(
             delete(LicitacionItem).where(LicitacionItem.licitacion_codigo.like("TEST-FUT-%"))
         )
@@ -53,6 +55,9 @@ async def _limpieza(db_session: AsyncSession) -> None:  # type: ignore[misc]
         await db_session.execute(delete(Interes).where(Interes.valor.in_(["73", "80"])))
         await db_session.execute(
             delete(PlanAnualLinea).where(PlanAnualLinea.descripcion.like("TEST-PAC%"))
+        )
+        await db_session.execute(
+            delete(Unspsc).where(Unspsc.codigo.in_(["73101500", "80101500"]))
         )
         await db_session.commit()
 
@@ -109,6 +114,20 @@ async def _crear_licitacion_renovable(
     await db_session.flush()
 
     if unspsc:
+        from app.models.catalogos import Unspsc
+
+        existing = await db_session.get(Unspsc, unspsc)
+        if existing is None:
+            db_session.add(
+                Unspsc(
+                    codigo=unspsc,
+                    nivel=8,
+                    segmento=unspsc[:2],
+                    nombre_es=f"Código UNSPSC {unspsc} (test)",
+                )
+            )
+            await db_session.flush()
+
         db_session.add(
             LicitacionItem(
                 licitacion_codigo=codigo,

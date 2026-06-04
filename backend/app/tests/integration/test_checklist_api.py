@@ -20,7 +20,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.db.session import AsyncSessionLocal
 from app.models.enums import LicitacionEstado
 from app.models.licitacion import Licitacion
 from app.models.pipeline import PipelineChecklistItem, PipelineItem
@@ -43,26 +42,24 @@ async def _get_auth_header(client: AsyncClient, email: str, password: str) -> di
 
 
 @pytest_asyncio.fixture(scope="function")
-async def licitacion_prueba() -> AsyncGenerator[str, None]:
+async def licitacion_prueba(db_session: AsyncSession) -> AsyncGenerator[str, None]:
     """Crea una licitación de prueba. La limpia al final."""
-    async with AsyncSessionLocal() as session:
-        lic = Licitacion(
-            codigo=_CODIGO_LIC,
-            nombre="Licitación de prueba para checklist tests",
-            estado=LicitacionEstado.publicada,
-            moneda="CLP",
-        )
-        session.add(lic)
-        await session.commit()
+    lic = Licitacion(
+        codigo=_CODIGO_LIC,
+        nombre="Licitación de prueba para checklist tests",
+        estado=LicitacionEstado.publicada,
+        moneda="CLP",
+    )
+    db_session.add(lic)
+    await db_session.commit()
 
     yield _CODIGO_LIC
 
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(select(Licitacion).where(Licitacion.codigo == _CODIGO_LIC))
-        lic_obj = result.scalar_one_or_none()
-        if lic_obj is not None:
-            await session.delete(lic_obj)
-            await session.commit()
+    result = await db_session.execute(select(Licitacion).where(Licitacion.codigo == _CODIGO_LIC))
+    lic_obj = result.scalar_one_or_none()
+    if lic_obj is not None:
+        await db_session.delete(lic_obj)
+        await db_session.commit()
 
 
 @pytest_asyncio.fixture
@@ -101,11 +98,11 @@ async def pipeline_item_de_usuario(
     }
 
     # Cleanup
-    async with AsyncSessionLocal() as cleanup_session:
-        obj = await cleanup_session.get(PipelineItem, item.id)
+    if not getattr(item, "_already_deleted", False):
+        obj = await db_session.get(PipelineItem, item.id)
         if obj is not None:
-            await cleanup_session.delete(obj)
-            await cleanup_session.commit()
+            await db_session.delete(obj)
+            await db_session.commit()
 
 
 @pytest.mark.asyncio
@@ -251,27 +248,26 @@ async def test_cascade_delete_pipeline_item(
         item_id = resp.json()["id"]
 
         # Verificar que el ítem existe en la BD
-        async with AsyncSessionLocal() as session:
-            checklist_result = await session.execute(
-                select(PipelineChecklistItem).where(PipelineChecklistItem.id == uuid.UUID(item_id))
-            )
-            assert checklist_result.scalar_one_or_none() is not None
+        await db_session.expire_all()
+        checklist_result = await db_session.execute(
+            select(PipelineChecklistItem).where(PipelineChecklistItem.id == uuid.UUID(item_id))
+        )
+        assert checklist_result.scalar_one_or_none() is not None
 
         # Eliminar el pipeline_item directamente en la BD (CASCADE test)
-        async with AsyncSessionLocal() as session:
-            pi = await session.get(PipelineItem, pipeline_item_id)
-            if pi is not None:
-                await session.delete(pi)
-                await session.commit()
+        pi = await db_session.get(PipelineItem, pipeline_item_id)
+        if pi is not None:
+            await db_session.delete(pi)
+            await db_session.commit()
 
         # Verificar que el checklist_item ya no existe (CASCADE funcionó)
-        async with AsyncSessionLocal() as session:
-            checklist_result = await session.execute(
-                select(PipelineChecklistItem).where(PipelineChecklistItem.id == uuid.UUID(item_id))
-            )
-            assert (
-                checklist_result.scalar_one_or_none() is None
-            ), "El checklist_item debería haberse eliminado en cascada con el pipeline_item"
+        await db_session.expire_all()
+        checklist_result = await db_session.execute(
+            select(PipelineChecklistItem).where(PipelineChecklistItem.id == uuid.UUID(item_id))
+        )
+        assert (
+            checklist_result.scalar_one_or_none() is None
+        ), "El checklist_item debería haberse eliminado en cascada con el pipeline_item"
 
         # Marcar el pipeline_item como ya limpiado para evitar doble-delete en teardown
         pip["pipeline_item"]._already_deleted = True  # type: ignore[attr-defined]
