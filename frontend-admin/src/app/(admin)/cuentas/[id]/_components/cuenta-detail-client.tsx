@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, Building2, Key, UserCog, Activity } from "lucide-react";
+import { ChevronLeft, Building2, Key, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import {
   obtenerCuenta,
