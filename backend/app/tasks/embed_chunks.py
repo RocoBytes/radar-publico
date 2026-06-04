@@ -124,7 +124,7 @@ async def _run(documento_id: str) -> dict[str, int]:
     return stats
 
 
-@celery_app.task(  # type: ignore[untyped-decorator]
+@celery_app.task(  # type: ignore
     name="tasks.embed_chunks.embed_chunks_documento",
     bind=True,
     autoretry_for=(EmbeddingError,),

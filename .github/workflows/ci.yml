@@ -55,7 +55,7 @@ jobs:
             types-pytz \
             types-passlib \
             structlog \
-            celery \
+            "celery==5.4.0" \
             httpx \
             bcrypt==4.0.1 \
             cryptography==43.0.3 \

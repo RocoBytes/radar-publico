@@ -217,7 +217,7 @@ async def _sync_empresa(
     return stats
 
 
-@celery_app.task(  # type: ignore[untyped-decorator]
+@celery_app.task(  # type: ignore
     name="tasks.sync_chilecompra.sync_listado_diario",
     bind=True,
     max_retries=3,

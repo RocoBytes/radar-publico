@@ -413,7 +413,7 @@ async def _run(ano: int | None) -> dict[str, object]:
     return {"empresas": len(tickets), "anos": anos, "total": total}
 
 
-@celery_app.task(  # type: ignore[untyped-decorator]
+@celery_app.task(  # type: ignore
     name="tasks.sync_plan_anual.sync_plan_anual",
     bind=True,
     max_retries=3,

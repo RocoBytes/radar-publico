@@ -273,7 +273,7 @@ async def _procesar_adjunto(
     stats["descargados"] += 1
 
 
-@celery_app.task(  # type: ignore[untyped-decorator]
+@celery_app.task(  # type: ignore
     name="tasks.scrape_bases.scrape_bases_licitacion",
     bind=True,
     autoretry_for=(ScrapingError, R2UploadError),

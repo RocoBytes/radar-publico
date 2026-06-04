@@ -126,7 +126,7 @@ async def _generar_recordatorios() -> dict[str, int]:
     return stats
 
 
-@celery_app.task(  # type: ignore[untyped-decorator]
+@celery_app.task(  # type: ignore
     name="tasks.generar_recordatorios.generar_recordatorios_cierre",
     bind=True,
     acks_late=True,

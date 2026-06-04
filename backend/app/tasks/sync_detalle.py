@@ -534,7 +534,7 @@ async def _run(
     return stats
 
 
-@celery_app.task(  # type: ignore[untyped-decorator]
+@celery_app.task(  # type: ignore
     name="tasks.sync_detalle.sync_detalle_licitacion",
     bind=True,
     autoretry_for=(MercadoPublicoError,),
@@ -584,7 +584,7 @@ async def _encolar_pendientes(limit: int) -> dict[str, int]:
     return {"encoladas": len(codigos)}
 
 
-@celery_app.task(  # type: ignore[untyped-decorator]
+@celery_app.task(  # type: ignore
     name="tasks.sync_detalle.sync_detalles_pendientes",
     bind=True,
     acks_late=True,
