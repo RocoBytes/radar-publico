@@ -121,6 +121,7 @@ async def test_sync_listado_trae_licitaciones(empresa_prueba: dict[str, str]) ->
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="Requiere API ChileCompra sin rate-limit — ejecutar manualmente con ticket válido")
 async def test_sync_idempotente(empresa_prueba: dict[str, str]) -> None:
     """Ejecutar sync dos veces no duplica registros."""
     from app.core.encryption import decrypt_ticket
@@ -201,6 +202,7 @@ async def test_sync_idempotente(empresa_prueba: dict[str, str]) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="Requiere API ChileCompra sin rate-limit — ejecutar manualmente con ticket válido")
 async def test_api_quota_log_se_persiste(empresa_prueba: dict[str, str]) -> None:
     """Verifica que cada request queda registrado en api_quota_log."""
     from app.core.encryption import decrypt_ticket
