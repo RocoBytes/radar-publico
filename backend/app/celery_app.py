@@ -52,7 +52,7 @@ celery_app.conf.update(
 
 
 # Beat schedule: sincronización cada 15 minutos (CLAUDE.md §6.3)
-@task_prerun.connect
+@task_prerun.connect  # type: ignore[misc]
 def reset_db_pool_before_task(**kwargs: object) -> None:
     """Descarta el pool asyncpg ANTES de cada tarea para evitar 'Future attached to different loop'.
 
