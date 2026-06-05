@@ -120,7 +120,6 @@ module = [
     "botocore.*",
     "pymupdf.*",
     "fitz.*",
-    "unstructured.*",
     "playwright.*",
     "aiolimiter.*",
     "tiktoken.*",

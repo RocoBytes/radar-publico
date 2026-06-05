@@ -17,15 +17,11 @@ ENV PYTHONUNBUFFERED=1 \
 # - build-essential: compilar paquetes nativos
 # - libpq-dev: cliente Postgres
 # - curl: healthchecks
-# - poppler-utils, tesseract-ocr: parseo de PDFs (pymupdf y OCR)
-# - libmagic1: detección de tipo MIME
+# - libmagic1: detección de tipo MIME (python-magic)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     curl \
-    poppler-utils \
-    tesseract-ocr \
-    tesseract-ocr-spa \
     libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
