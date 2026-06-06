@@ -3,16 +3,20 @@ import { type NextRequest, NextResponse } from "next/server"
 /**
  * Middleware de autenticación para Radar Público.
  *
- * Flujo:
- * 1. Rutas públicas y /api/* → dejar pasar siempre
- * 2. access_token presente y no expirado → dejar pasar sin fetch
- * 3. access_token ausente o expirado + refresh_token presente → intentar refresh
- *    - Si el refresh tiene éxito: setear nueva cookie y continuar
- *    - Si el refresh falla: redirect a /login
- * 4. Sin ningún token → redirect a /login
+ * Flujo (solo chequeos estáticos, sin fetch de red):
+ * 1. Rutas públicas, /api/* y raíz → dejar pasar siempre
+ * 2. access_token presente y no expirado → dejar pasar
+ * 3. refresh_token presente y no expirado → dejar pasar
+ *    El cliente disparará el refresh cuando el backend devuelva 401,
+ *    usando el interceptor de apiFetch → Route Handler /api/auth/refresh.
+ * 4. Sin ningún token válido → redirect a /login
  *
- * IMPORTANTE: No usar `export const runtime = 'edge'` porque hacemos fetch a
- * http:// (red Docker interna). Edge runtime no soporta fetch a URLs http://.
+ * Por qué eliminamos el fetch bloqueante:
+ * El refresh en el middleware duplicaba la latencia de cada transición de
+ * página (fetch a la red interna de Docker en el critical path de routing).
+ * El interceptor client-side en apiFetch maneja el mismo escenario sin
+ * bloquear el rendering: recibe 401 del backend, llama /api/auth/refresh,
+ * y reintenta el request original con skipRefresh: true.
  */
 
 const PUBLIC_PATHS = [
@@ -21,9 +25,6 @@ const PUBLIC_PATHS = [
   "/reset-password",
   "/change-password",
 ]
-
-const INTERNAL_API_URL =
-  process.env["INTERNAL_API_URL"] ?? "http://localhost:8000"
 
 /**
  * Decodifica el payload del JWT y verifica si está expirado.
@@ -42,35 +43,10 @@ function isTokenExpired(token: string): boolean {
   }
 }
 
-/**
- * Intenta refrescar el access_token usando el refresh_token.
- * Llama al backend interno directamente (http:// en red Docker).
- * Devuelve el nuevo access_token o null si el refresh falló.
- */
-async function refreshAccessToken(
-  refreshToken: string
-): Promise<string | null> {
-  try {
-    const response = await fetch(
-      `${INTERNAL_API_URL}/api/v1/auth/refresh`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      }
-    )
-    if (!response.ok) return null
-    const data = (await response.json()) as { access_token?: string }
-    return data.access_token ?? null
-  } catch {
-    return null
-  }
-}
-
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl
 
-  // Dejar pasar rutas públicas y las rutas de API (Route Handlers)
+  // Dejar pasar rutas públicas, las rutas de API (Route Handlers) y la raíz
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
     pathname.startsWith("/api/") ||
@@ -83,35 +59,20 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const accessToken = request.cookies.get("access_token")?.value
   const refreshToken = request.cookies.get("refresh_token")?.value
 
-  // Caso feliz: access_token presente y vigente → dejar pasar sin ningún fetch
+  // access_token vigente → caso feliz, sin ningún fetch
   if (accessToken && !isTokenExpired(accessToken)) {
     return NextResponse.next()
   }
 
-  // Sin refresh_token → no hay forma de recuperar la sesión
-  if (!refreshToken) {
-    return NextResponse.redirect(new URL("/login", request.url))
+  // access_token expirado pero refresh_token vigente → dejar pasar.
+  // El backend devolverá 401 al primer request de datos; el interceptor en
+  // apiFetch disparará POST /api/auth/refresh y reintentará con skipRefresh.
+  if (refreshToken && !isTokenExpired(refreshToken)) {
+    return NextResponse.next()
   }
 
-  // access_token ausente o expirado, pero hay refresh_token → intentar refresh
-  const newAccessToken = await refreshAccessToken(refreshToken)
-
-  if (!newAccessToken) {
-    // Refresh falló (refresh_token expirado o inválido)
-    return NextResponse.redirect(new URL("/login", request.url))
-  }
-
-  // Refresh exitoso: continuar con la respuesta y setear la nueva cookie
-  const response = NextResponse.next()
-  response.cookies.set("access_token", newAccessToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    // No seteamos maxAge aquí — el backend ya definió la expiración en el JWT
-  })
-
-  return response
+  // Sin ningún token válido → no hay forma de recuperar la sesión
+  return NextResponse.redirect(new URL("/login", request.url))
 }
 
 export const config = {
