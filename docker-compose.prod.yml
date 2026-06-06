@@ -125,12 +125,6 @@ services:
         max-size: "50m"
         max-file: "5"
 
-  # Flower y MailHog no van a producción
-  flower:
-    profiles: ["never"]
-  mailhog:
-    profiles: ["never"]
-
   # Reverse proxy con TLS automático (Caddy)
   proxy:
     image: caddy:2-alpine

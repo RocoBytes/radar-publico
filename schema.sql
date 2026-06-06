@@ -241,7 +241,10 @@ CREATE TABLE licitaciones (
   contacto_email varchar(255),
   contacto_telefono varchar(50),
   raw_payload jsonb,
-  search_vector tsvector,
+  search_vector tsvector GENERATED ALWAYS AS (
+    setweight(to_tsvector('es_unaccent', coalesce(nombre, '')), 'A') ||
+    setweight(to_tsvector('es_unaccent', coalesce(descripcion, '')), 'B')
+  ) STORED,
   embedding vector(1024),
   hash_contenido varchar(64),
   detalle_sincronizado_at timestamptz,
@@ -259,19 +262,6 @@ CREATE INDEX idx_licitaciones_search ON licitaciones USING gin (search_vector);
 CREATE INDEX idx_licitaciones_embedding ON licitaciones USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX idx_licitaciones_renovacion ON licitaciones (fecha_estimada_termino_contrato)
   WHERE es_renovable = true AND estado = 'adjudicada';
-
-CREATE OR REPLACE FUNCTION update_licitacion_search_vector() RETURNS trigger AS $$
-BEGIN
-  NEW.search_vector :=
-    setweight(to_tsvector('es_unaccent', coalesce(NEW.nombre, '')), 'A') ||
-    setweight(to_tsvector('es_unaccent', coalesce(NEW.descripcion, '')), 'B');
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_licitaciones_search_vector
-BEFORE INSERT OR UPDATE OF nombre, descripcion ON licitaciones
-FOR EACH ROW EXECUTE FUNCTION update_licitacion_search_vector();
 
 
 -- ============================================================
