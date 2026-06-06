@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 try:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 except ImportError:
-    PlaywrightTimeoutError = TimeoutError  # type: ignore[misc,assignment]
+    PlaywrightTimeoutError = TimeoutError
 
 from app.config import settings
 from app.models.enums import DocumentoTipo
