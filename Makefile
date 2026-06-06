@@ -100,6 +100,18 @@ migrate-create:
 	@read -p "Nombre de la migración: " name; \
 	docker compose exec api alembic revision --autogenerate -m "$$name"
 
+test:
+	docker compose exec api python -m pytest app/tests -v
+
+test-unit:
+	docker compose exec api python -m pytest app/tests/unit -v
+
+test-integration:
+	docker compose exec api python -m pytest app/tests/integration -v
+
+test-cov:
+	docker compose exec api python -m pytest app/tests --cov=app/services --cov-report=term-missing
+
 seed:
 	docker compose exec api python -m app.scripts.seed --all
 
@@ -126,6 +138,7 @@ prod-deploy:
 	git pull origin main
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml build
 	docker image prune -f
+	docker builder prune -f
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm api alembic upgrade head
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 	@echo "✓ Despliegue completado"
