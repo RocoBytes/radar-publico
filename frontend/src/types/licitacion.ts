@@ -75,10 +75,9 @@ export type LicitacionDetalle = LicitacionListItem & {
 
 export type LicitacionListResponse = {
   items: LicitacionListItem[]
-  total: number
+  total: number | null
   page: number
   page_size: number
-  total_pages: number
 }
 
 // ── Módulo 1: Auto-análisis de bases técnicas ─────────────────────────────────

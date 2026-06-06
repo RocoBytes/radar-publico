@@ -20,13 +20,8 @@ import { es } from "date-fns/locale"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { getNotificacionesResumen, marcarNotificacionLeida } from "@/lib/api"
+import { getMeClient, getNotificacionesResumen, marcarNotificacionLeida } from "@/lib/api"
 import type { Notificacion } from "@/types/notificacion"
-
-type SidebarUser = {
-  email: string
-  empresa: { razon_social: string } | null
-}
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -138,10 +133,15 @@ function NotifBell() {
   )
 }
 
-export function Sidebar({ user }: { user: SidebarUser }) {
+export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const { data: user } = useQuery({
+    queryKey: ["me"],
+    queryFn: getMeClient,
+    staleTime: 5 * 60 * 1000,
+  })
 
   async function handleLogout() {
     setIsLoggingOut(true)
@@ -152,7 +152,9 @@ export function Sidebar({ user }: { user: SidebarUser }) {
     }
   }
 
-  const initial = (user.empresa?.razon_social ?? user.email).charAt(0).toUpperCase()
+  const initial = user
+    ? (user.empresa?.razon_social ?? user.email).charAt(0).toUpperCase()
+    : "…"
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r bg-white shadow-sm">
@@ -203,14 +205,23 @@ export function Sidebar({ user }: { user: SidebarUser }) {
             {initial}
           </div>
           <div className="flex min-w-0 flex-1 flex-col">
-            {user.empresa && (
-              <span className="truncate text-sm font-medium leading-tight">
-                {user.empresa.razon_social}
-              </span>
+            {user ? (
+              <>
+                {user.empresa && (
+                  <span className="truncate text-sm font-medium leading-tight">
+                    {user.empresa.razon_social}
+                  </span>
+                )}
+                <span className="truncate text-xs leading-tight text-muted-foreground">
+                  {user.email}
+                </span>
+              </>
+            ) : (
+              <div className="space-y-1">
+                <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                <div className="h-2.5 w-32 animate-pulse rounded bg-muted" />
+              </div>
             )}
-            <span className="truncate text-xs leading-tight text-muted-foreground">
-              {user.email}
-            </span>
           </div>
           <NotifBell />
         </div>

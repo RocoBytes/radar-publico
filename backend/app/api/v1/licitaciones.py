@@ -11,7 +11,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import Select, exists, func, select
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import defer, joinedload, selectinload
 import structlog
 
 from app.api.deps import CurrentUser, DbDep  # noqa: TCH001
@@ -27,6 +27,14 @@ from app.schemas.licitaciones import (
 
 router = APIRouter(prefix="/licitaciones", tags=["licitaciones"])
 logger = structlog.get_logger()
+
+# Columnas pesadas que no se necesitan en el listado (embedding ~4KB, raw_payload variable)
+_DEFER_LIST = [
+    defer(Licitacion.embedding),
+    defer(Licitacion.search_vector),
+    defer(Licitacion.raw_payload),
+    defer(Licitacion.descripcion),
+]
 
 
 def _date_to_utc_start(d: date) -> datetime:
@@ -140,13 +148,10 @@ async def listar_licitaciones(
         unspsc_codigo=unspsc_codigo,
     )
 
-    # COUNT separado — no usar len() sobre los resultados paginados
-    count_stmt = select(func.count()).select_from(base_stmt.subquery())
-    total: int = (await db.execute(count_stmt)).scalar_one()
-
-    # Query paginada con orden estable
+    # Query paginada con orden estable — sin columnas pesadas que el listado no usa
     paginated_stmt = (
-        base_stmt.order_by(Licitacion.fecha_publicacion.desc().nullslast())
+        base_stmt.options(*_DEFER_LIST)
+        .order_by(Licitacion.fecha_publicacion.desc().nullslast())
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
@@ -170,7 +175,6 @@ async def listar_licitaciones(
 
     return LicitacionListResponse(
         items=items,
-        total=total,
         page=page,
         page_size=page_size,
     )

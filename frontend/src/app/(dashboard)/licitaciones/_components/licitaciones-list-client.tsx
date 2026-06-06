@@ -156,7 +156,8 @@ export function LicitacionesListClient() {
     queryFn: () => getLicitaciones(filtros),
   })
 
-  const totalPages = data?.total_pages ?? 1
+  const hasNextPage = (data?.items.length ?? 0) >= 25
+  const hasPrevPage = page > 1
 
   async function handleExport() {
     setExportando(true)
@@ -298,25 +299,23 @@ export function LicitacionesListClient() {
       </div>
 
       {/* Paginación */}
-      {data && totalPages > 1 && (
+      {(hasNextPage || hasPrevPage) && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Página {page} de {totalPages} ({data.total} resultados)
-          </p>
+          <p className="text-sm text-muted-foreground">Página {page}</p>
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
+              disabled={!hasPrevPage}
             >
               Anterior
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNextPage}
             >
               Siguiente
             </Button>

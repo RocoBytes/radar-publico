@@ -86,6 +86,7 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY requerido en .env}
       PLAYWRIGHT_HEADLESS: "true"
     restart: always
+    command: celery -A app.celery_app worker -Q scraping --concurrency=1 --loglevel=info
     deploy:
       resources:
         limits:

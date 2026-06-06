@@ -8,13 +8,22 @@ El portal usa WebForms ASP.NET con tabs dinámicos. La sección de documentos
 puede requerir un click en el tab antes de que los links sean visibles.
 """
 
+from __future__ import annotations
+
 import asyncio
 from dataclasses import dataclass
 import re
+from typing import TYPE_CHECKING
 
-from playwright.async_api import Page
-from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 import structlog
+
+if TYPE_CHECKING:
+    from playwright.async_api import Page
+
+try:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+except ImportError:
+    PlaywrightTimeoutError = TimeoutError  # type: ignore[misc,assignment]
 
 from app.config import settings
 from app.models.enums import DocumentoTipo

@@ -202,6 +202,11 @@ export async function getMe(accessToken: string): Promise<UserMe> {
   return serverFetch<UserMe>("/auth/me", accessToken)
 }
 
+/** Obtiene el perfil del usuario autenticado (client-side, con cookies). */
+export async function getMeClient(): Promise<UserMe> {
+  return apiFetch<UserMe>("/auth/me")
+}
+
 // ---- Dashboard ----
 
 export async function getDashboardResumen(): Promise<DashboardResumen> {

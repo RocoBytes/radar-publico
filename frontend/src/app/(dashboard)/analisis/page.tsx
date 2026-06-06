@@ -1,34 +1,5 @@
-import dynamic from "next/dynamic"
 import { SegmentosResumen } from "./_components/segmentos-resumen"
-import { Skeleton } from "@/components/ui/skeleton"
-
-/**
- * TendenciaChart y TopOrganismosChart usan recharts (~400 kB).
- * Se cargan de forma lazy para que recharts no entre en el bundle inicial
- * de la página de análisis.
- * ssr: false porque recharts usa APIs del DOM que no existen en el servidor.
- */
-const TendenciaChart = dynamic(
-  () =>
-    import("./_components/tendencia-chart").then((m) => ({
-      default: m.TendenciaChart,
-    })),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-[348px] w-full" />,
-  }
-)
-
-const TopOrganismosChart = dynamic(
-  () =>
-    import("./_components/top-organismos-chart").then((m) => ({
-      default: m.TopOrganismosChart,
-    })),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-[348px] w-full" />,
-  }
-)
+import { TendenciaChartDynamic, TopOrganismosChartDynamic } from "./_components/charts-dynamic"
 
 export default function AnalisisPage() {
   return (
@@ -42,8 +13,8 @@ export default function AnalisisPage() {
         </p>
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <TendenciaChart />
-        <TopOrganismosChart />
+        <TendenciaChartDynamic />
+        <TopOrganismosChartDynamic />
       </div>
       <SegmentosResumen />
     </div>

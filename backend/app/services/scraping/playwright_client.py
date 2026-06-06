@@ -8,17 +8,23 @@ Uso:
         await page.goto(url)
 """
 
+from __future__ import annotations
+
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-
-from playwright.async_api import Page, async_playwright
+from typing import TYPE_CHECKING
 
 from app.config import settings
+
+if TYPE_CHECKING:
+    from playwright.async_api import Page
 
 
 @asynccontextmanager
 async def playwright_page() -> AsyncIterator[Page]:
     """Abre un browser Chromium, crea una página y la cierra al salir."""
+    from playwright.async_api import async_playwright  # lazy — solo carga cuando se ejecuta
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=settings.playwright_headless)
         context = await browser.new_context(

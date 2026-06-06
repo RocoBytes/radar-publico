@@ -50,14 +50,19 @@ RUN if [ -f poetry.lock ]; then \
     fi
 
 # ============================================================
-# Development: hot reload, dev tools
+# Development: hot reload, dev tools, test deps
 # ============================================================
 FROM base AS development
 
-# Copiar el venv ya construido con todas las dependencias
+# Copiar el venv ya construido con las dependencias de producción
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH=/app
+
+# Instalar deps completas (incluye pytest, pytest-asyncio, pytest-cov)
+# sobre el venv de producción. El install es idempotente.
+COPY requirements.txt ./
+RUN .venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # El código fuente se monta como volumen en docker-compose,
 # pero copiamos aquí para que la imagen sea self-contained

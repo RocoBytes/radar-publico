@@ -45,7 +45,7 @@ class LicitacionListResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     items: list[LicitacionListItem]
-    total: int
+    total: int | None = None
     page: int
     page_size: int
 

@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import defer, selectinload
 
 from app.api.deps import CurrentUser, DbDep, EmpresaDep
 from app.models.catalogos import Unspsc
@@ -102,7 +102,14 @@ async def obtener_resumen(
         .where(PipelineItem.empresa_id == empresa.id)
         .order_by(PipelineItem.score.desc().nulls_last())
         .limit(_TOP_N)
-        .options(selectinload(PipelineItem.licitacion).options(selectinload(Licitacion.organismo)))
+        .options(
+            selectinload(PipelineItem.licitacion).options(
+                selectinload(Licitacion.organismo),
+                defer(Licitacion.embedding),
+                defer(Licitacion.search_vector),
+                defer(Licitacion.raw_payload),
+            )
+        )
     )
     top_items = list(top_r.scalars().all())
 
