@@ -16,6 +16,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
+    FetchedValue,
     ForeignKey,
     Index,
     Integer,
@@ -109,7 +110,7 @@ class Licitacion(Base):
     raw_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     # Búsqueda y similitud
-    search_vector: Mapped[Any | None] = mapped_column(TSVECTOR, nullable=True)
+    search_vector: Mapped[Any | None] = mapped_column(TSVECTOR, FetchedValue(), nullable=True)
     embedding: Mapped[Any | None] = mapped_column(Vector(1024), nullable=True)
 
     # Control del pipeline de ingesta

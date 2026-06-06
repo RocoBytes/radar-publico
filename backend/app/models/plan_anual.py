@@ -13,6 +13,7 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     DateTime,
     Enum,
+    FetchedValue,
     ForeignKey,
     Index,
     Numeric,
@@ -77,7 +78,7 @@ class PlanAnualLinea(Base):
     )
 
     # tsvector generado por trigger en la BD — solo lectura desde el ORM
-    search_vector: Mapped[Any | None] = mapped_column(TSVECTOR, nullable=True)
+    search_vector: Mapped[Any | None] = mapped_column(TSVECTOR, FetchedValue(), nullable=True)
 
     # vector(1024) — Voyage AI embeddings
     embedding: Mapped[Any | None] = mapped_column(Vector(1024), nullable=True)

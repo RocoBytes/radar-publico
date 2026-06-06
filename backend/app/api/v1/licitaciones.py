@@ -148,6 +148,10 @@ async def listar_licitaciones(
         unspsc_codigo=unspsc_codigo,
     )
 
+    # COUNT total para paginación — mismo filtro, sin ORDER/LIMIT/columnas pesadas
+    count_stmt = select(func.count()).select_from(base_stmt.subquery())
+    total: int = (await db.execute(count_stmt)).scalar_one()
+
     # Query paginada con orden estable — sin columnas pesadas que el listado no usa
     paginated_stmt = (
         base_stmt.options(*_DEFER_LIST)
@@ -175,6 +179,7 @@ async def listar_licitaciones(
 
     return LicitacionListResponse(
         items=items,
+        total=total,
         page=page,
         page_size=page_size,
     )
