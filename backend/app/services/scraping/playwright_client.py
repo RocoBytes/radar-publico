@@ -10,13 +10,14 @@ Uso:
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from app.config import settings
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from playwright.async_api import Page
 
 
