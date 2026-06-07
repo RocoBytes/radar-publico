@@ -150,9 +150,7 @@ async def solicitar_ticket(
         ticket_ultimos_4=ticket_ultimos_4,
     )
 
-    return TicketRequestResponse(
-        mensaje="Ticket recibido. Se está validando con Mercado Público."
-    )
+    return TicketRequestResponse(mensaje="Ticket recibido. Se está validando con Mercado Público.")
 
 
 @router.get("/ticket-status", response_model=TicketStatusResponse)
