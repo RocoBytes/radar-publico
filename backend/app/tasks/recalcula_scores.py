@@ -21,7 +21,7 @@ import asyncio
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 import structlog
 
@@ -72,28 +72,43 @@ async def _recalcula_empresa(empresa_id: UUID) -> dict[str, int]:
     regiones = list(empresa.regiones_operacion or [])
     intereses = list(empresa.intereses)
 
-    async with AsyncSessionLocal() as session:
-        for item in items:
-            try:
-                score, justificacion = calcular_score(item.licitacion, intereses, regiones)
-                if item.score == score:
-                    stats["sin_cambio"] += 1
-                    continue
-                # Re-attach para que la sesión pueda rastrear los cambios
-                item_db = await session.get(type(item), item.id)
-                if item_db is None:
-                    continue
-                item_db.score = score
-                item_db.score_justificacion = justificacion
-                stats["actualizados"] += 1
-            except Exception as exc:
-                logger.error(
-                    "recalcula_scores_item_error",
-                    pipeline_item_id=str(item.id),
-                    error=str(exc),
-                )
-                stats["errores"] += 1
+    # Fase 1 — cómputo puro (CPU, sin I/O).
+    # Se separa explícitamente para que los errores de scoring no aborten el commit
+    # de los items que sí se procesaron correctamente.
+    updates: list[dict[str, Any]] = []
+    for item in items:
+        try:
+            score, justificacion = calcular_score(item.licitacion, intereses, regiones)
+            if item.score == score:
+                stats["sin_cambio"] += 1
+                continue
+            # SQLAlchemy ORM Bulk UPDATE by PK requiere la PK bajo su nombre real ("id").
+            updates.append(
+                {
+                    "id": item.id,
+                    "score": score,
+                    "score_justificacion": justificacion,
+                }
+            )
+        except Exception as exc:
+            logger.error(
+                "recalcula_scores_item_error",
+                pipeline_item_id=str(item.id),
+                error=str(exc),
+            )
+            stats["errores"] += 1
 
+    stats["actualizados"] = len(updates)
+
+    if not updates:
+        return stats
+
+    # Fase 2 — bulk UPDATE: reemplaza N session.get() individuales por un solo
+    # executemany pipelineado (ORM Bulk UPDATE by Primary Key de SQLAlchemy 2.0).
+    # Genera: UPDATE pipeline_items SET score=?, score_justificacion=? WHERE id=?
+    # con N bind-sets — un único round-trip por lote de conexión.
+    async with AsyncSessionLocal() as session:
+        await session.execute(update(PipelineItem), updates)
         await session.commit()
 
     return stats
