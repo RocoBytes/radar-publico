@@ -297,8 +297,17 @@ async def actualizar_pipeline_item(
         db.add(notif)
         await db.commit()
 
-    # Recargar con relaciones después del commit
-    item = await _get_item_de_empresa_o_404(item_id, empresa.id, db, con_notas=True)
+    # Recarga post-commit: carga las relaciones sin re-ejecutar la verificación
+    # de empresa (ya fue verificada antes del commit — no hay riesgo de seguridad).
+    resultado = await db.execute(
+        select(PipelineItem)
+        .where(PipelineItem.id == item_id)
+        .options(
+            selectinload(PipelineItem.licitacion).options(selectinload(Licitacion.organismo)),
+            selectinload(PipelineItem.notas),
+        )
+    )
+    item = resultado.unique().scalar_one()
     return _build_detail(item)
 
 
