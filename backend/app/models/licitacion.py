@@ -25,9 +25,9 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    text,
+    text,  # text() para expresiones SQL literales en índices
 )
-from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -113,6 +113,13 @@ class Licitacion(Base):
     search_vector: Mapped[Any | None] = mapped_column(TSVECTOR, FetchedValue(), nullable=True)
     embedding: Mapped[Any | None] = mapped_column(Vector(1024), nullable=True)
 
+    # Prefijos UNSPSC desnormalizados (segmento/familia/clase/commodity de todos los ítems).
+    # Mantenidos por el trigger trg_items_refresh_unspsc en licitacion_items.
+    # Permite filtrado jerárquico con GIN en O(log N) sin correlated EXISTS.
+    # Text (no String/VARCHAR) para coincidir con el tipo text[] de la columna en BD
+    # y habilitar el operador @> sin cast explícito en asyncpg.
+    unspsc_prefijos: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+
     # Control del pipeline de ingesta
     hash_contenido: Mapped[str | None] = mapped_column(String(64), nullable=True)
     detalle_sincronizado_at: Mapped[datetime | None] = mapped_column(
@@ -172,6 +179,11 @@ class Licitacion(Base):
             "idx_licitaciones_renovacion",
             "fecha_estimada_termino_contrato",
             postgresql_where=text("es_renovable = true AND estado = 'adjudicada'"),
+        ),
+        Index(
+            "idx_licitaciones_unspsc_gin",
+            "unspsc_prefijos",
+            postgresql_using="gin",
         ),
     )
 

@@ -10,14 +10,16 @@ from datetime import UTC, date, datetime, time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import Select, exists, func, select  # func: plainto_tsquery en _apply_filters
+from sqlalchemy import Select, func, select  # func: plainto_tsquery en _apply_filters
 from sqlalchemy.orm import defer, joinedload, selectinload
 import structlog
 
 from app.api.deps import CurrentUser, DbDep  # noqa: TCH001
 from app.celery_app import celery_app
+from app.core import cache
+from app.models.catalogos import Region
 from app.models.enums import LicitacionEstado  # noqa: TCH001
-from app.models.licitacion import Licitacion, LicitacionItem
+from app.models.licitacion import Licitacion
 from app.models.organismo import Organismo
 from app.schemas.licitaciones import (
     LicitacionDetalleResponse,
@@ -53,7 +55,7 @@ def _apply_filters(
     q: str | None,
     estado: LicitacionEstado | None,
     tipo: str | None,
-    region_codigo: int | None,
+    region_codigo: str | None,
     fecha_cierre_desde: date | None,
     fecha_cierre_hasta: date | None,
     monto_min: float | None,
@@ -68,9 +70,10 @@ def _apply_filters(
     if tipo is not None:
         stmt = stmt.where(Licitacion.tipo == tipo)
     if region_codigo is not None:
-        # Organismo.region es string — filtramos por codigo_organismo
-        # directamente en la licitación (join ya aplicado).
-        stmt = stmt.where(Licitacion.codigo_organismo == region_codigo)
+        # Subquery: traduce Region.codigo → Region.nombre para comparar con
+        # Organismo.region (que almacena el nombre tal como viene de la API).
+        nombre_subq = select(Region.nombre).where(Region.codigo == region_codigo).scalar_subquery()
+        stmt = stmt.where(Organismo.region == nombre_subq)
     if fecha_cierre_desde is not None:
         stmt = stmt.where(Licitacion.fecha_cierre >= _date_to_utc_start(fecha_cierre_desde))
     if fecha_cierre_hasta is not None:
@@ -80,16 +83,10 @@ def _apply_filters(
     if monto_max is not None:
         stmt = stmt.where(Licitacion.monto_estimado <= monto_max)
     if unspsc_codigo is not None:
-        # EXISTS soporta jerarquía: "73" → segmento, "7310" → familia,
-        # "731015" → clase, "73101500" → commodity (UNSPSC §9 CLAUDE.md).
-        stmt = stmt.where(
-            exists(
-                select(LicitacionItem.id).where(
-                    LicitacionItem.licitacion_codigo == Licitacion.codigo,
-                    LicitacionItem.unspsc_codigo.like(f"{unspsc_codigo}%"),
-                )
-            )
-        )
+        # GIN @> en O(log N) — reemplaza el correlated EXISTS + LIKE que hacía
+        # sequential scan con locales UTF-8. unspsc_prefijos contiene todos los
+        # niveles del estándar (segmento 2D, familia 4D, clase 6D, commodity 8D).
+        stmt = stmt.where(Licitacion.unspsc_prefijos.contains([unspsc_codigo]))
     return stmt
 
 
@@ -103,9 +100,9 @@ async def listar_licitaciones(
         default=None,
         description="Tipo: L1, LE, LP, LS, CO, AG, CM",
     ),
-    region_codigo: int | None = Query(
+    region_codigo: str | None = Query(
         default=None,
-        description="Código de organismo para filtrar por región",
+        description="Código de región (ej: '13', 'RM'). Filtra por región del organismo comprador.",
     ),
     fecha_cierre_desde: date | None = Query(default=None),  # noqa: B008
     fecha_cierre_hasta: date | None = Query(default=None),  # noqa: B008
@@ -176,6 +173,9 @@ async def listar_licitaciones(
     )
 
 
+_CACHE_TTL_DETALLE = 600  # 10 minutos
+
+
 @router.get("/{codigo}", response_model=LicitacionDetalleResponse)
 async def obtener_licitacion(
     codigo: str,
@@ -186,6 +186,13 @@ async def obtener_licitacion(
 
     Levanta 404 si el código no existe.
     """
+    # Cache hit solo cuando el detalle está completamente sincronizado.
+    # Si está pendiente no cacheamos — hay side-effects (encola sync_detalle).
+    cache_key = f"lic:{codigo}"
+    cached_raw = await cache.get(cache_key)
+    if cached_raw is not None:
+        return LicitacionDetalleResponse.model_validate_json(cached_raw)
+
     stmt = (
         select(Licitacion)
         .where(Licitacion.codigo == codigo)
@@ -225,5 +232,9 @@ async def obtener_licitacion(
         response.organismo_comuna = org.comuna
         response.organismo_direccion = org.direccion
         response.organismo_ministerio = org.ministerio
+
+    # Solo persistir en cache cuando el detalle está completo
+    if licitacion.detalle_sincronizado_at is not None:
+        await cache.set(cache_key, response.model_dump_json(), ex=_CACHE_TTL_DETALLE)
 
     return response

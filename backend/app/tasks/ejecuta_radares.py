@@ -39,7 +39,7 @@ _VENTANA_INICIAL_HORAS = 24
 async def _ejecutar_radar(radar_id: UUID) -> dict[str, int]:
     from app.db.session import AsyncSessionLocal
     from app.models.empresa import Empresa
-    from app.models.licitacion import Licitacion, LicitacionItem
+    from app.models.licitacion import Licitacion
     from app.models.notificacion import Notificacion
     from app.models.pipeline import PipelineItem
     from app.models.radar import Radar
@@ -105,14 +105,8 @@ async def _ejecutar_radar(radar_id: UUID) -> dict[str, int]:
         if filtros.get("monto_max") is not None:
             stmt = stmt.where(Licitacion.monto_estimado <= filtros["monto_max"])
         if filtros.get("unspsc_codigo"):
-            stmt = stmt.where(
-                exists(
-                    select(LicitacionItem.id).where(
-                        LicitacionItem.licitacion_codigo == Licitacion.codigo,
-                        LicitacionItem.unspsc_codigo.like(f"{filtros['unspsc_codigo']}%"),
-                    )
-                )
-            )
+            # GIN @> — usa idx_licitaciones_unspsc_gin en O(log N).
+            stmt = stmt.where(Licitacion.unspsc_prefijos.contains([filtros["unspsc_codigo"]]))
 
         resultado = await session.execute(stmt)
         licitaciones = list(resultado.scalars().all())
