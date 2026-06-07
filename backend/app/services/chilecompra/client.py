@@ -224,7 +224,8 @@ class MercadoPublicoClient:
                     if "cuota" in msg or "excedido" in msg:
                         raise CuotaExcedidaError()
                     # La API retorna 200 + mensaje de texto cuando el ticket es inválido.
-                    # Ej: {"Mensaje": "El Ticket de Acceso suministrado no es válido o está inactivo."}
+                    # Ej: {"Mensaje": "El Ticket de Acceso suministrado
+                    #       no es válido o está inactivo."}
                     if "no es válido" in msg or "inactivo" in msg:
                         ultimos_4 = ticket[-4:] if len(ticket) >= 4 else "????"
                         raise TicketInvalidoError(ultimos_4)

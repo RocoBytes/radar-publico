@@ -73,8 +73,6 @@ async def _validate_async(ticket_id_str: str) -> None:
                     empresa_id=ticket.empresa_id,
                 )
 
-            del ticket_plaintext
-
             ticket.status = TicketStatus.active
             ticket.ultima_validacion_at = datetime.now(UTC)
             ticket.ultimo_error = None
@@ -82,7 +80,6 @@ async def _validate_async(ticket_id_str: str) -> None:
             logger.info("validate_ticket_activated", ticket_id=ticket_id_str)
 
         except TicketInvalidoError as exc:
-            del ticket_plaintext
             ticket.status = TicketStatus.error
             ticket.ultimo_error = str(exc)
             ticket.ultima_validacion_at = datetime.now(UTC)
@@ -90,7 +87,6 @@ async def _validate_async(ticket_id_str: str) -> None:
             logger.warning("validate_ticket_invalid", ticket_id=ticket_id_str, error=str(exc))
 
         except MercadoPublicoError as exc:
-            del ticket_plaintext
             # Error transitorio (timeout, 5xx): dejar en pending para reintento manual
             ticket.ultimo_error = f"Error al validar: {exc}"
             ticket.ultima_validacion_at = datetime.now(UTC)
@@ -98,10 +94,12 @@ async def _validate_async(ticket_id_str: str) -> None:
             logger.error("validate_ticket_transient_error", ticket_id=ticket_id_str, error=str(exc))
 
         except Exception as exc:
-            del ticket_plaintext
             ticket.ultimo_error = f"Error inesperado: {exc}"
             ticket.ultima_validacion_at = datetime.now(UTC)
             ticket.updated_at = datetime.now(UTC)
             logger.error("validate_ticket_unexpected", ticket_id=ticket_id_str, error=str(exc))
+
+        finally:
+            del ticket_plaintext
 
         await db.commit()
