@@ -96,7 +96,7 @@ async def test_busqueda_por_palabra_exacta_en_titulo(
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] >= 1
+    assert len(data["items"]) >= 1
     assert any(palabra.lower() in item["nombre"].lower() for item in data["items"])
 
 
@@ -147,7 +147,7 @@ async def test_busqueda_sin_resultados_retorna_lista_vacia(
     assert resp.status_code == 200
     data = resp.json()
     assert data["items"] == []
-    assert data["total"] == 0
+    assert data["has_next"] is False
 
 
 @pytest.mark.e2e

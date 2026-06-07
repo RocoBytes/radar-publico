@@ -341,7 +341,8 @@ async def test_pipeline_filtro_estado_interesado(
     )
     assert r.status_code == 200, r.text
     data = r.json()
-    assert data["total"] >= 1
+    assert len(data["items"]) >= 1
+    assert isinstance(data["has_next"], bool)
     for item in data["items"]:
         assert item["estado"] == "interesado"
 
