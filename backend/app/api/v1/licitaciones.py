@@ -10,7 +10,7 @@ from datetime import UTC, date, datetime, time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import Select, exists, func, select
+from sqlalchemy import Select, exists, func, select  # func: plainto_tsquery en _apply_filters
 from sqlalchemy.orm import defer, joinedload, selectinload
 import structlog
 
@@ -148,18 +148,17 @@ async def listar_licitaciones(
         unspsc_codigo=unspsc_codigo,
     )
 
-    # COUNT total para paginación — mismo filtro, sin ORDER/LIMIT/columnas pesadas
-    count_stmt = select(func.count()).select_from(base_stmt.subquery())
-    total: int = (await db.execute(count_stmt)).scalar_one()
-
-    # Query paginada con orden estable — sin columnas pesadas que el listado no usa
+    # Consultar page_size+1 para detectar si hay página siguiente — sin COUNT(*)
     paginated_stmt = (
         base_stmt.options(*_DEFER_LIST)
         .order_by(Licitacion.fecha_publicacion.desc().nullslast())
         .offset((page - 1) * page_size)
-        .limit(page_size)
+        .limit(page_size + 1)
     )
     rows = (await db.execute(paginated_stmt)).all()
+
+    has_next = len(rows) > page_size
+    rows = rows[:page_size]
 
     items: list[LicitacionListItem] = []
     for row in rows:
@@ -168,18 +167,10 @@ async def listar_licitaciones(
         item = LicitacionListItem.model_validate(licitacion)
         item.organismo_nombre = organismo_nombre
         items.append(item)
-        # Encolar sync de detalle en background para licitaciones no sincronizadas.
-        # Cuando el usuario abra el registro desde el listado, la tarea ya estará
-        # en progreso o completada.
-        if licitacion.detalle_sincronizado_at is None:
-            celery_app.send_task(
-                "tasks.sync_detalle.sync_detalle_licitacion",
-                args=[licitacion.codigo],
-            )
 
     return LicitacionListResponse(
         items=items,
-        total=total,
+        has_next=has_next,
         page=page,
         page_size=page_size,
     )

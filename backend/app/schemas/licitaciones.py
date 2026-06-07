@@ -40,12 +40,15 @@ class LicitacionListItem(BaseModel):
 
 
 class LicitacionListResponse(BaseModel):
-    """Respuesta paginada del listado de licitaciones."""
+    """Respuesta paginada del listado de licitaciones.
+
+    No incluye total — se usa el patrón page_size+1 para evitar COUNT(*).
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
     items: list[LicitacionListItem]
-    total: int | None = None
+    has_next: bool
     page: int
     page_size: int
 

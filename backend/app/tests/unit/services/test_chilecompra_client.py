@@ -20,6 +20,7 @@ import respx
 from app.services.chilecompra.client import MercadoPublicoClient
 from app.services.chilecompra.enums import EstadoLicitacion
 from app.services.chilecompra.exceptions import (
+    CuotaExcedidaError,
     LicitacionNoEncontradaError,
     MercadoPublicoError,
     RateLimitError,
@@ -149,6 +150,59 @@ class TestListarLicitaciones:
         respx.get(f"{BASE_URL}/licitaciones.json").mock(return_value=httpx.Response(401))
         async with MercadoPublicoClient() as client:
             with pytest.raises(TicketInvalidoError):
+                await client.listar_licitaciones_por_estado(
+                    estado=EstadoLicitacion.ACTIVAS,
+                    ticket=TICKET,
+                )
+
+    @respx.mock
+    async def test_200_con_mensaje_ticket_invalido_lanza_ticket_invalido_error(
+        self, mock_log: None
+    ) -> None:
+        """HTTP 200 con mensaje de ticket inválido → TicketInvalidoError (no lista vacía)."""
+        respx.get(f"{BASE_URL}/licitaciones.json").mock(
+            return_value=httpx.Response(
+                200,
+                json={"Mensaje": "El Ticket de Acceso suministrado no es válido o está inactivo."},
+            )
+        )
+        async with MercadoPublicoClient() as client:
+            with pytest.raises(TicketInvalidoError) as exc_info:
+                await client.listar_licitaciones_por_estado(
+                    estado=EstadoLicitacion.ACTIVAS,
+                    ticket=TICKET,
+                )
+        assert exc_info.value.ticket_ultimos_4 == TICKET[-4:]
+
+    @respx.mock
+    async def test_200_con_mensaje_inactivo_lanza_ticket_invalido_error(
+        self, mock_log: None
+    ) -> None:
+        """HTTP 200 con variante de mensaje 'inactivo' → TicketInvalidoError."""
+        respx.get(f"{BASE_URL}/licitaciones.json").mock(
+            return_value=httpx.Response(
+                200,
+                json={"Mensaje": "Ticket inactivo."},
+            )
+        )
+        async with MercadoPublicoClient() as client:
+            with pytest.raises(TicketInvalidoError):
+                await client.listar_licitaciones_por_estado(
+                    estado=EstadoLicitacion.ACTIVAS,
+                    ticket=TICKET,
+                )
+
+    @respx.mock
+    async def test_200_con_cuota_excedida_lanza_cuota_error(self, mock_log: None) -> None:
+        """HTTP 200 con mensaje de cuota excedida → CuotaExcedidaError (sin cambio previo)."""
+        respx.get(f"{BASE_URL}/licitaciones.json").mock(
+            return_value=httpx.Response(
+                200,
+                json={"Mensaje": "Se ha excedido la cuota diaria del ticket."},
+            )
+        )
+        async with MercadoPublicoClient() as client:
+            with pytest.raises(CuotaExcedidaError):
                 await client.listar_licitaciones_por_estado(
                     estado=EstadoLicitacion.ACTIVAS,
                     ticket=TICKET,

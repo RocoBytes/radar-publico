@@ -1,6 +1,12 @@
-"""Tests unitarios para GET /api/v1/empresa/ticket-status.
+"""Tests unitarios para endpoints de ticket de empresa.
 
-Cubre:
+Cubre POST /api/v1/empresa/ticket-request:
+- Guarda el ticket cifrado en BD con status=pending.
+- Actualiza ticket existente (upsert).
+- Dispara tarea Celery de validación.
+- Sin token → 401. Sin empresa → 404.
+
+Cubre GET /api/v1/empresa/ticket-status:
 - Empresa sin ticket → 200, tiene_ticket=False, resto null/0.
 - Empresa con ticket activo → 200, campos correctos.
 - Conteo de requests_hoy via ApiQuotaLog.
@@ -15,6 +21,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
@@ -214,4 +221,125 @@ async def test_ticket_status_404_sin_empresa(
         "/api/v1/empresa/ticket-status",
         headers=_auth_headers(str(user.id)),
     )
+    assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Tests: POST /empresa/ticket-request
+# ---------------------------------------------------------------------------
+
+_TICKET_PRUEBA = "F8537A18-6766-4DEF-9E59-426B4FEE2844"
+
+
+@pytest.mark.asyncio
+async def test_ticket_request_guarda_en_pending(
+    client: AsyncClient,
+    empresa_con_usuario: tuple[Any, Empresa],
+    db_session: AsyncSession,
+) -> None:
+    """POST /ticket-request → ticket cifrado guardado en BD con status=pending."""
+    user, empresa = empresa_con_usuario
+
+    with patch("app.api.v1.empresa.celery_app") as mock_celery:
+        r = await client.post(
+            "/api/v1/empresa/ticket-request",
+            json={"ticket_texto": _TICKET_PRUEBA},
+            headers=_auth_headers(str(user.id)),
+        )
+
+    assert r.status_code == 200
+    assert "validando" in r.json()["mensaje"].lower()
+
+    # Verificar persistencia en BD
+    result = await db_session.execute(select(TicketApi).where(TicketApi.empresa_id == empresa.id))
+    ticket = result.scalar_one_or_none()
+
+    assert ticket is not None
+    assert ticket.status == TicketStatus.pending
+    assert ticket.ticket_ultimos_4 == _TICKET_PRUEBA[-4:]
+    assert ticket.ticket_cifrado != _TICKET_PRUEBA  # nunca en claro
+
+    # Verificar que la tarea fue disparada
+    mock_celery.send_task.assert_called_once_with(
+        "tasks.validate_ticket.validate_ticket_api",
+        args=[str(ticket.id)],
+    )
+
+
+@pytest.mark.asyncio
+async def test_ticket_request_upsert_actualiza_existente(
+    client: AsyncClient,
+    empresa_con_usuario: tuple[Any, Empresa],
+    db_session: AsyncSession,
+) -> None:
+    """Si ya existe un ticket para la empresa, debe actualizarse (no duplicarse)."""
+    user, empresa = empresa_con_usuario
+    empresa_id = empresa.id  # Capturar antes de cualquier posible expiración
+
+    # Insertar ticket previo en estado active
+    ticket_previo = TicketApi(
+        empresa_id=empresa_id,
+        ticket_cifrado="viejo-cifrado",
+        ticket_ultimos_4="9999",
+        status=TicketStatus.active,
+    )
+    db_session.add(ticket_previo)
+    await db_session.commit()
+    await db_session.refresh(ticket_previo)  # Cargar estado completo
+
+    with patch("app.api.v1.empresa.celery_app"):
+        r = await client.post(
+            "/api/v1/empresa/ticket-request",
+            json={"ticket_texto": _TICKET_PRUEBA},
+            headers=_auth_headers(str(user.id)),
+        )
+
+    assert r.status_code == 200
+
+    # refresh() hace un SELECT fresh desde la BD — no usa identity map cacheado
+    await db_session.refresh(ticket_previo)
+
+    assert ticket_previo.status == TicketStatus.pending
+    assert ticket_previo.ticket_ultimos_4 == _TICKET_PRUEBA[-4:]
+    assert ticket_previo.ticket_cifrado != "viejo-cifrado"
+
+    # Debe existir exactamente 1 ticket para la empresa (sin duplicados)
+    from sqlalchemy import func as sa_func
+
+    count_result = await db_session.execute(
+        select(sa_func.count(TicketApi.id)).where(TicketApi.empresa_id == empresa_id)
+    )
+    assert count_result.scalar_one() == 1
+
+
+@pytest.mark.asyncio
+async def test_ticket_request_requiere_auth(client: AsyncClient) -> None:
+    """POST /empresa/ticket-request sin token → 401."""
+    r = await client.post(
+        "/api/v1/empresa/ticket-request",
+        json={"ticket_texto": _TICKET_PRUEBA},
+    )
+    assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_ticket_request_404_sin_empresa(
+    client: AsyncClient,
+    make_user: Callable[..., Any],
+) -> None:
+    """POST /ticket-request con usuario sin empresa → 404."""
+    user: Any = await make_user(
+        email="sin_empresa_req@example.cl",
+        rol=UserRole.proveedor,
+        status=UserStatus.active,
+        must_change_password=False,
+        with_empresa=False,
+    )
+
+    with patch("app.api.v1.empresa.celery_app"):
+        r = await client.post(
+            "/api/v1/empresa/ticket-request",
+            json={"ticket_texto": _TICKET_PRUEBA},
+            headers=_auth_headers(str(user.id)),
+        )
     assert r.status_code == 404

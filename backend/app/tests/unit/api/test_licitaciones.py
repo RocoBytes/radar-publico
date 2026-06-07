@@ -86,7 +86,7 @@ async def test_listado_vacio(
     client: AsyncClient,
     make_user: Any,
 ) -> None:
-    """BD vacía → items=[], total=0."""
+    """BD vacía → items=[], has_next=False."""
     user = await make_user()
     resp = await client.get(
         "/api/v1/licitaciones",
@@ -95,7 +95,7 @@ async def test_listado_vacio(
     assert resp.status_code == 200
     data = resp.json()
     assert data["items"] == []
-    assert data["total"] == 0
+    assert data["has_next"] is False
     assert data["page"] == 1
     assert data["page_size"] == 25
 
@@ -106,7 +106,7 @@ async def test_listado_con_licitaciones(
     make_user: Any,
     db_session: AsyncSession,
 ) -> None:
-    """3 licitaciones insertadas → total=3, paginación coherente."""
+    """3 licitaciones insertadas → 3 items, has_next=False (menos que page_size)."""
     user = await make_user()
 
     lics = [_licitacion(f"TEST-{i:04d}-L123") for i in range(3)]
@@ -119,10 +119,45 @@ async def test_listado_con_licitaciones(
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] == 3
     assert len(data["items"]) == 3
+    assert data["has_next"] is False
     assert data["page"] == 1
     assert data["page_size"] == 25
+
+
+@pytest.mark.asyncio
+async def test_listado_has_next_true(
+    client: AsyncClient,
+    make_user: Any,
+    db_session: AsyncSession,
+) -> None:
+    """page_size+1 ítems disponibles → has_next=True, solo page_size devueltos."""
+    user = await make_user()
+
+    # Insertar page_size+1 = 3 licitaciones con page_size=2
+    lics = [_licitacion(f"HASNEXT-{i:04d}-L123") for i in range(3)]
+    db_session.add_all(lics)
+    await db_session.commit()
+
+    resp = await client.get(
+        "/api/v1/licitaciones",
+        params={"page": 1, "page_size": 2},
+        headers=_auth_headers(str(user.id)),
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["items"]) == 2
+    assert data["has_next"] is True
+
+    # Página 2 tiene el tercer ítem y has_next=False
+    resp2 = await client.get(
+        "/api/v1/licitaciones",
+        params={"page": 2, "page_size": 2},
+        headers=_auth_headers(str(user.id)),
+    )
+    data2 = resp2.json()
+    assert len(data2["items"]) == 1
+    assert data2["has_next"] is False
 
 
 @pytest.mark.asyncio
@@ -131,7 +166,7 @@ async def test_filtro_por_estado(
     make_user: Any,
     db_session: AsyncSession,
 ) -> None:
-    """2 publicadas + 1 cerrada: filtrar estado=publicada → total=2."""
+    """2 publicadas + 1 cerrada: filtrar estado=publicada → 2 items, has_next=False."""
     user = await make_user()
 
     lics = [
@@ -149,7 +184,8 @@ async def test_filtro_por_estado(
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] == 2
+    assert len(data["items"]) == 2
+    assert data["has_next"] is False
     assert all(item["estado"] == "publicada" for item in data["items"])
 
 
@@ -295,7 +331,8 @@ async def test_filtro_por_unspsc(
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["has_next"] is False
     assert data["items"][0]["codigo"] == "UNSPSC-A-L123"
 
     # Familia 8010 → solo lic_B
@@ -306,7 +343,8 @@ async def test_filtro_por_unspsc(
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["has_next"] is False
     assert data["items"][0]["codigo"] == "UNSPSC-B-L123"
 
     # Segmento 99 → ninguna
@@ -317,5 +355,5 @@ async def test_filtro_por_unspsc(
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] == 0
     assert data["items"] == []
+    assert data["has_next"] is False

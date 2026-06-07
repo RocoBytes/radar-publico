@@ -66,13 +66,15 @@ class PipelineItemResponse(PipelineItemListItem):
 
 
 class PipelineListResponse(BaseModel):
-    """Respuesta paginada del listado del pipeline."""
+    """Respuesta paginada del listado del pipeline.
+
+    No incluye total — se usa el patrón page_size+1 para evitar COUNT(*).
+    """
 
     items: list[PipelineItemListItem]
-    total: int
+    has_next: bool
     page: int
     page_size: int
-    total_pages: int
 
 
 class PipelineItemUpdateRequest(BaseModel):

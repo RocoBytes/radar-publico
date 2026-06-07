@@ -9,11 +9,10 @@ DELETE /api/v1/pipeline/{id}/notas/{nota_id} — eliminar una nota
 """
 
 from datetime import UTC, datetime
-import math
 import uuid
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
@@ -203,18 +202,14 @@ async def listar_pipeline(
     if licitacion_codigo is not None:
         base = base.where(PipelineItem.licitacion_codigo == licitacion_codigo)
 
-    # Total para la paginación
-    count_result = await db.execute(select(func.count()).select_from(base.subquery()))
-    total = count_result.scalar_one()
-
-    # Página de ítems con relaciones
+    # Consultar page_size+1 para detectar si hay página siguiente — sin COUNT(*)
     items_result = await db.execute(
         base.order_by(
             PipelineItem.score.desc().nulls_last(),
             PipelineItem.created_at.desc(),
         )
         .offset((page - 1) * page_size)
-        .limit(page_size)
+        .limit(page_size + 1)
         .options(
             selectinload(PipelineItem.licitacion).options(selectinload(Licitacion.organismo)),
             selectinload(PipelineItem.notas),
@@ -222,12 +217,14 @@ async def listar_pipeline(
     )
     items = list(items_result.scalars().all())
 
+    has_next = len(items) > page_size
+    items = items[:page_size]
+
     return PipelineListResponse(
         items=[_build_list_item(item, len(item.notas)) for item in items],
-        total=total,
+        has_next=has_next,
         page=page,
         page_size=page_size,
-        total_pages=math.ceil(total / page_size),
     )
 
 

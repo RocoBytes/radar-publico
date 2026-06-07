@@ -17,6 +17,7 @@ celery_app = Celery(
     backend=settings.celery_result_backend,
     include=[
         "app.tasks.sync_chilecompra",
+        "app.tasks.validate_ticket",  # Onboarding: valida ticket ChileCompra recién registrado
         "app.tasks.notifications",  # Feature B: alertas cambio estado externo
         "app.tasks.sync_detalle",  # Sprint 2: detalle de licitaciones
         "app.tasks.scrape_bases",  # Sprint 2: scraping de PDFs desde el portal

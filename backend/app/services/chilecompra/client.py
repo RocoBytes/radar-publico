@@ -215,7 +215,7 @@ class MercadoPublicoClient:
         code = response.status_code
 
         if code == 200:
-            # Verificar si la API indica cuota agotada en el body
+            # Verificar errores semánticos que Mercado Público envía con HTTP 200
             try:
                 body = response.json()
                 if isinstance(body, dict):
@@ -223,6 +223,11 @@ class MercadoPublicoClient:
                     msg = str(raw).lower()
                     if "cuota" in msg or "excedido" in msg:
                         raise CuotaExcedidaError()
+                    # La API retorna 200 + mensaje de texto cuando el ticket es inválido.
+                    # Ej: {"Mensaje": "El Ticket de Acceso suministrado no es válido o está inactivo."}
+                    if "no es válido" in msg or "inactivo" in msg:
+                        ultimos_4 = ticket[-4:] if len(ticket) >= 4 else "????"
+                        raise TicketInvalidoError(ultimos_4)
             except (ValueError, KeyError):
                 pass
             return

@@ -14,9 +14,12 @@ from sqlalchemy import and_, func, select
 import structlog
 
 from app.api.deps import CurrentUser, DbDep
+from app.celery_app import celery_app
 from app.core import cache
+from app.core.encryption import encrypt_ticket
 from app.models.api_log import ApiQuotaLog
 from app.models.empresa import Empresa
+from app.models.enums import TicketStatus
 from app.models.ticket import TicketApi
 from app.schemas.empresa import EmpresaResponse, EmpresaUpdateRequest, TicketStatusResponse
 
@@ -101,25 +104,55 @@ async def solicitar_ticket(
     db: DbDep,
     current_user: CurrentUser,
 ) -> TicketRequestResponse:
-    """Recibe un ticket ChileCompra del usuario y notifica al equipo de soporte.
+    """Persiste el ticket ChileCompra cifrado y dispara validación asíncrona.
 
-    NO persiste el ticket en la BD — eso lo hace el admin manualmente.
-    Solo loguea los últimos 4 caracteres del ticket para trazabilidad,
-    respetando la regla de oro #12 (sin PII en logs).
+    El ticket se guarda en estado pending. Una tarea Celery hace un ping
+    a la API de Mercado Público y actualiza el status a active o error.
+    Reglas de oro #2 (cifrado) y #12 (sin PII en logs).
     """
     empresa = await _get_empresa_o_404(db, current_user)
 
-    # Solo loguear los últimos 4 caracteres — regla #12: sin datos sensibles en logs
     ticket_ultimos_4 = data.ticket_texto[-4:] if len(data.ticket_texto) >= 4 else "????"
+    ticket_cifrado = encrypt_ticket(data.ticket_texto)
 
-    logger.warning(
-        "ticket_request_recibido",
+    # Upsert: actualizar si ya existe un ticket para esta empresa, insertar si no
+    result = await db.execute(select(TicketApi).where(TicketApi.empresa_id == empresa.id))
+    ticket = result.scalar_one_or_none()
+
+    if ticket is None:
+        ticket = TicketApi(
+            empresa_id=empresa.id,
+            ticket_cifrado=ticket_cifrado,
+            ticket_ultimos_4=ticket_ultimos_4,
+            status=TicketStatus.pending,
+        )
+        db.add(ticket)
+    else:
+        ticket.ticket_cifrado = ticket_cifrado
+        ticket.ticket_ultimos_4 = ticket_ultimos_4
+        ticket.status = TicketStatus.pending
+        ticket.ultimo_error = None
+        ticket.updated_at = datetime.now(UTC)
+
+    await db.commit()
+    await db.refresh(ticket)
+
+    # Validación asíncrona: el worker hace un ping mínimo a la API
+    celery_app.send_task(
+        "tasks.validate_ticket.validate_ticket_api",
+        args=[str(ticket.id)],
+    )
+
+    logger.info(
+        "ticket_persistido_para_validacion",
         empresa_id=str(empresa.id),
         usuario_id=str(current_user.id),
         ticket_ultimos_4=ticket_ultimos_4,
     )
 
-    return TicketRequestResponse(mensaje="Solicitud enviada al equipo de soporte")
+    return TicketRequestResponse(
+        mensaje="Ticket recibido. Se está validando con Mercado Público."
+    )
 
 
 @router.get("/ticket-status", response_model=TicketStatusResponse)

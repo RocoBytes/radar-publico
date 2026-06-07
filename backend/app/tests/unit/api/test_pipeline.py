@@ -139,7 +139,7 @@ async def test_listar_pipeline_vacio(
     assert resp.status_code == 200
     data = resp.json()
     assert data["items"] == []
-    assert data["total"] == 0
+    assert data["has_next"] is False
     assert data["page"] == 1
 
 
@@ -159,7 +159,8 @@ async def test_listar_pipeline_con_item(
     resp = await client.get("/api/v1/pipeline", headers=_auth_headers(str(user.id)))
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["has_next"] is False
     item = data["items"][0]
     assert item["estado"] == "nueva"
     assert item["score"] == 72
@@ -180,7 +181,9 @@ async def test_listar_pipeline_filtro_estado(
         headers=_auth_headers(str(user.id)),
     )
     assert resp.status_code == 200
-    assert resp.json()["total"] == 0
+    d = resp.json()
+    assert d["items"] == []
+    assert d["has_next"] is False
 
     # Filtro que sí coincide
     resp2 = await client.get(
@@ -188,7 +191,9 @@ async def test_listar_pipeline_filtro_estado(
         headers=_auth_headers(str(user.id)),
     )
     assert resp2.status_code == 200
-    assert resp2.json()["total"] == 1
+    d2 = resp2.json()
+    assert len(d2["items"]) == 1
+    assert d2["has_next"] is False
 
 
 @pytest.mark.asyncio
@@ -203,14 +208,18 @@ async def test_listar_pipeline_filtro_score_min(
         "/api/v1/pipeline?score_min=80",
         headers=_auth_headers(str(user.id)),
     )
-    assert resp.json()["total"] == 0
+    d = resp.json()
+    assert d["items"] == []
+    assert d["has_next"] is False
 
     # score_min=70 sí debe aparecer
     resp2 = await client.get(
         "/api/v1/pipeline?score_min=70",
         headers=_auth_headers(str(user.id)),
     )
-    assert resp2.json()["total"] == 1
+    d2 = resp2.json()
+    assert len(d2["items"]) == 1
+    assert d2["has_next"] is False
 
 
 @pytest.mark.asyncio
@@ -247,10 +256,19 @@ async def test_listar_pipeline_paginacion(
         headers=_auth_headers(str(user.id)),
     )
     data = resp.json()
-    assert data["total"] == 2
     assert len(data["items"]) == 1
+    assert data["has_next"] is True  # hay una segunda página
     # El de score más alto va primero
     assert data["items"][0]["score"] == 80
+
+    # Página 2 tiene el ítem restante y no hay más
+    resp2 = await client.get(
+        "/api/v1/pipeline?page=2&page_size=1",
+        headers=_auth_headers(str(user.id)),
+    )
+    data2 = resp2.json()
+    assert len(data2["items"]) == 1
+    assert data2["has_next"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -611,5 +629,6 @@ async def test_listar_pipeline_filtro_licitacion_codigo(
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["has_next"] is False
     assert data["items"][0]["licitacion"]["codigo"] == pipeline_item.licitacion_codigo
