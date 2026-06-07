@@ -459,6 +459,12 @@ async def _run(
 
             await session.commit()
 
+        # Invalidar caché del endpoint de detalle para que la próxima
+        # request refleje el detalle recién sincronizado.
+        from app.core import cache as redis_cache
+
+        await redis_cache.delete(f"lic:{codigo}")
+
         duracion_ms = int((datetime.now(UTC) - inicio).total_seconds() * 1000)
 
         if era_nueva:
@@ -494,6 +500,34 @@ async def _run(
             args=[codigo],
         )
         logger.debug("embed_licitacion_encolado", codigo=codigo)
+
+        # Recálculo reactivo de scores: cuando la licitación cambia de estado o
+        # se actualiza su detalle, las empresas que la siguen en su pipeline
+        # deben ver el score recalculado. Solo se encola si hay empresas afectadas.
+        from sqlalchemy import distinct
+
+        from app.models.pipeline import PipelineItem
+
+        async with AsyncSessionLocal() as session:
+            resultado_afectadas = await session.execute(
+                select(distinct(PipelineItem.empresa_id)).where(
+                    PipelineItem.licitacion_codigo == codigo
+                )
+            )
+            empresa_ids_afectadas = [str(eid) for (eid,) in resultado_afectadas.all()]
+
+        for eid in empresa_ids_afectadas:
+            celery_app.send_task(
+                "tasks.recalcula_scores.recalcula_scores_empresa",
+                args=[eid],
+            )
+
+        if empresa_ids_afectadas:
+            logger.info(
+                "sync_detalle_scores_encolados",
+                codigo=codigo,
+                empresas=len(empresa_ids_afectadas),
+            )
 
     except LicitacionNoEncontradaError:
         # Caso esperado: licitación revocada o eliminada en ChileCompra.
