@@ -20,7 +20,7 @@ from app.models.enums import TicketStatus
 logger = structlog.get_logger()
 
 
-@celery_app.task(
+@celery_app.task(  # type: ignore
     name="tasks.validate_ticket.validate_ticket_api",
     bind=True,
     max_retries=2,
