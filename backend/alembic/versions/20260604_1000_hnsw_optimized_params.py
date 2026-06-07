@@ -32,49 +32,62 @@ depends_on = None
 
 def upgrade() -> None:
     # Eliminar índices con parámetros por defecto
-    op.execute("DROP INDEX CONCURRENTLY IF EXISTS idx_chunks_embedding;")
-    op.execute("DROP INDEX CONCURRENTLY IF EXISTS idx_licitaciones_embedding;")
-    op.execute("DROP INDEX CONCURRENTLY IF EXISTS idx_plan_embedding;")
+    # CONCURRENTLY no puede correr dentro del bloque de transacción de Alembic;
+    # en migraciones el lock breve es aceptable (ventana de mantenimiento).
+    op.execute("DROP INDEX IF EXISTS idx_chunks_embedding")
+    op.execute("DROP INDEX IF EXISTS idx_licitaciones_embedding")
+    op.execute("DROP INDEX IF EXISTS idx_plan_embedding")
 
     # Recrear con m=32 / ef_construction=200, optimizados para 1024 dims
-    op.execute("""
-        CREATE INDEX CONCURRENTLY idx_chunks_embedding
+    op.execute(
+        """
+        CREATE INDEX idx_chunks_embedding
         ON documento_chunks
         USING hnsw (embedding vector_cosine_ops)
-        WITH (m = 32, ef_construction = 200);
-    """)
-    op.execute("""
-        CREATE INDEX CONCURRENTLY idx_licitaciones_embedding
+        WITH (m = 32, ef_construction = 200)
+        """
+    )
+    op.execute(
+        """
+        CREATE INDEX idx_licitaciones_embedding
         ON licitaciones
         USING hnsw (embedding vector_cosine_ops)
-        WITH (m = 32, ef_construction = 200);
-    """)
-    op.execute("""
-        CREATE INDEX CONCURRENTLY idx_plan_embedding
+        WITH (m = 32, ef_construction = 200)
+        """
+    )
+    op.execute(
+        """
+        CREATE INDEX idx_plan_embedding
         ON plan_anual_lineas
         USING hnsw (embedding vector_cosine_ops)
-        WITH (m = 32, ef_construction = 200);
-    """)
+        WITH (m = 32, ef_construction = 200)
+        """
+    )
 
 
 def downgrade() -> None:
-    # Volver a parámetros por defecto de pgvector (m=16, ef_construction=64)
-    op.execute("DROP INDEX CONCURRENTLY IF EXISTS idx_chunks_embedding;")
-    op.execute("DROP INDEX CONCURRENTLY IF EXISTS idx_licitaciones_embedding;")
-    op.execute("DROP INDEX CONCURRENTLY IF EXISTS idx_plan_embedding;")
+    op.execute("DROP INDEX IF EXISTS idx_chunks_embedding")
+    op.execute("DROP INDEX IF EXISTS idx_licitaciones_embedding")
+    op.execute("DROP INDEX IF EXISTS idx_plan_embedding")
 
-    op.execute("""
-        CREATE INDEX CONCURRENTLY idx_chunks_embedding
+    op.execute(
+        """
+        CREATE INDEX idx_chunks_embedding
         ON documento_chunks
-        USING hnsw (embedding vector_cosine_ops);
-    """)
-    op.execute("""
-        CREATE INDEX CONCURRENTLY idx_licitaciones_embedding
+        USING hnsw (embedding vector_cosine_ops)
+        """
+    )
+    op.execute(
+        """
+        CREATE INDEX idx_licitaciones_embedding
         ON licitaciones
-        USING hnsw (embedding vector_cosine_ops);
-    """)
-    op.execute("""
-        CREATE INDEX CONCURRENTLY idx_plan_embedding
+        USING hnsw (embedding vector_cosine_ops)
+        """
+    )
+    op.execute(
+        """
+        CREATE INDEX idx_plan_embedding
         ON plan_anual_lineas
-        USING hnsw (embedding vector_cosine_ops);
-    """)
+        USING hnsw (embedding vector_cosine_ops)
+        """
+    )
