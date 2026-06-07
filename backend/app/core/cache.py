@@ -15,8 +15,10 @@ Helper de alto nivel:
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 from pydantic import BaseModel
 import redis.asyncio as aioredis

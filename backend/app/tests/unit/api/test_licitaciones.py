@@ -26,6 +26,8 @@ from app.models.licitacion import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
 # ---------------------------------------------------------------------------
@@ -63,22 +65,20 @@ def _licitacion(
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def _limpieza_unspsc(db_session: "AsyncSession") -> "AsyncGenerator[None, None]":  # type: ignore[misc]
+async def _limpieza_unspsc(db_session: AsyncSession) -> AsyncGenerator[None, None]:  # type: ignore[misc]
     """Elimina licitaciones y UNSPSC codes de test antes y después de cada prueba.
 
     Los licitaciones 'UNSPSC-*-L123' se crean en test_filtro_por_unspsc con
     commit real. Sin este fixture, esos datos persisten entre runs y rompen el
     fixture _limpieza de test_futuro.py (FK violation al borrar unspsc_codigos).
     """
-    from collections.abc import AsyncGenerator
-
-    _UNSPSC_LICS = ["UNSPSC-A-L123", "UNSPSC-B-L123"]
-    _UNSPSC_CODES = ["73101500", "80101500"]
+    unspsc_lics = ["UNSPSC-A-L123", "UNSPSC-B-L123"]
+    unspsc_codes = ["73101500", "80101500"]
 
     async def _clean() -> None:
         # Borrando la licitación CASCADE elimina sus items (FK ON DELETE CASCADE)
-        await db_session.execute(delete(Licitacion).where(Licitacion.codigo.in_(_UNSPSC_LICS)))
-        await db_session.execute(delete(Unspsc).where(Unspsc.codigo.in_(_UNSPSC_CODES)))
+        await db_session.execute(delete(Licitacion).where(Licitacion.codigo.in_(unspsc_lics)))
+        await db_session.execute(delete(Unspsc).where(Unspsc.codigo.in_(unspsc_codes)))
         await db_session.commit()
 
     await _clean()

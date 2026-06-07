@@ -137,7 +137,10 @@ async def _run(batch_size: int, dry_run: bool) -> None:
         )
         print(f"  Batch {batch_num}: {rows} filas actualizadas (total: {total_actualizadas})")
 
-    print(f"Backfill completado: {total_actualizadas} licitaciones actualizadas en {batch_num} batches.")
+    print(
+        f"Backfill completado: {total_actualizadas} licitaciones"
+        f" actualizadas en {batch_num} batches."
+    )
     logger.info(
         "backfill_unspsc_prefijos_fin",
         total_actualizadas=total_actualizadas,
