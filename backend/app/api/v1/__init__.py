@@ -19,6 +19,7 @@ from app.api.v1.pipeline import router as pipeline_router
 from app.api.v1.pipeline_checklist import router as pipeline_checklist_router
 from app.api.v1.preferencias import router as preferencias_router
 from app.api.v1.radares import router as radares_router
+from app.api.v1.sync import router as sync_router
 
 router = APIRouter()
 router.include_router(health_router)
@@ -37,4 +38,5 @@ router.include_router(futuro_router)
 router.include_router(notificaciones_router)
 router.include_router(preferencias_router)
 router.include_router(directorios_router)
+router.include_router(sync_router)
 router.include_router(chat_router, prefix="/chat", tags=["chat"])

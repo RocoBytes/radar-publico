@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
-import { differenceInCalendarDays, format, startOfDay } from "date-fns"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { differenceInCalendarDays, format, formatDistanceToNow, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
-import { Download, Loader2, Search } from "lucide-react"
-import { getLicitaciones } from "@/lib/api"
+import { Download, Loader2, RefreshCw, Search } from "lucide-react"
+import { toast } from "sonner"
+import { getCatalogosUnspsc, getLicitaciones, triggerSyncLicitaciones } from "@/lib/api"
 import { downloadCsv } from "@/lib/csv"
 import type { LicitacionEstado, LicitacionFiltros } from "@/types/licitacion"
 import {
@@ -20,7 +21,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -108,15 +111,20 @@ function SkeletonRows() {
 export function LicitacionesListClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
 
-  // Leer estado inicial desde URL
   const [q, setQ] = useState(searchParams.get("q") ?? "")
   const [estado, setEstado] = useState<LicitacionEstado | "todos">(
     (searchParams.get("estado") as LicitacionEstado) ?? "todos"
   )
+  const [unspsc, setUnspsc] = useState(searchParams.get("unspsc") ?? "")
   const [page, setPage] = useState(Number(searchParams.get("page") ?? "1"))
   const [debouncedQ, setDebouncedQ] = useState(q)
   const [exportando, setExportando] = useState(false)
+  const [ultimaActualizacion, setUltimaActualizacion] = useState<Date | null>(null)
+  const [syncCooldownUntil, setSyncCooldownUntil] = useState<Date | null>(null)
+
+  const syncCooldownActivo = syncCooldownUntil != null && new Date() < syncCooldownUntil
 
   // Debounce búsqueda 300ms
   useEffect(() => {
@@ -129,10 +137,11 @@ export function LicitacionesListClient() {
 
   // Sincronizar filtros a URL
   const syncUrl = useCallback(
-    (nextQ: string, nextEstado: string, nextPage: number) => {
+    (nextQ: string, nextEstado: string, nextUnspsc: string, nextPage: number) => {
       const params = new URLSearchParams()
       if (nextQ) params.set("q", nextQ)
       if (nextEstado && nextEstado !== "todos") params.set("estado", nextEstado)
+      if (nextUnspsc) params.set("unspsc", nextUnspsc)
       if (nextPage > 1) params.set("page", String(nextPage))
       const query = params.toString()
       router.replace(`/licitaciones${query ? `?${query}` : ""}`, { scroll: false })
@@ -141,12 +150,13 @@ export function LicitacionesListClient() {
   )
 
   useEffect(() => {
-    syncUrl(debouncedQ, estado, page)
-  }, [debouncedQ, estado, page, syncUrl])
+    syncUrl(debouncedQ, estado, unspsc, page)
+  }, [debouncedQ, estado, unspsc, page, syncUrl])
 
   const filtros: LicitacionFiltros = {
     ...(debouncedQ ? { q: debouncedQ } : {}),
     ...(estado !== "todos" ? { estado } : {}),
+    ...(unspsc ? { unspsc_codigo: unspsc } : {}),
     page,
     page_size: 25,
   }
@@ -154,6 +164,31 @@ export function LicitacionesListClient() {
   const { data, isLoading } = useQuery({
     queryKey: ["licitaciones", filtros],
     queryFn: () => getLicitaciones(filtros),
+  })
+
+  // Registrar cuándo se actualizaron los datos por última vez
+  useEffect(() => {
+    if (data) setUltimaActualizacion(new Date())
+  }, [data])
+
+  // Catálogo UNSPSC — se cachea 24h, no cambia en runtime
+  const { data: catalogosUnspsc } = useQuery({
+    queryKey: ["catalogos", "unspsc"],
+    queryFn: getCatalogosUnspsc,
+    staleTime: 24 * 60 * 60 * 1000,
+  })
+
+  const { mutate: dispararSync, isPending: sincronizando } = useMutation({
+    mutationFn: triggerSyncLicitaciones,
+    onSuccess: () => {
+      toast.success("Sincronización iniciada — los resultados llegarán en ~1 minuto.")
+      const cooldownFin = new Date(Date.now() + 90_000)
+      setSyncCooldownUntil(cooldownFin)
+      setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ["licitaciones"] })
+      }, 90_000)
+    },
+    onError: () => toast.error("No se pudo iniciar la sincronización. Intentá de nuevo."),
   })
 
   const hasNextPage = (data?.items.length ?? 0) >= 25
@@ -182,7 +217,7 @@ export function LicitacionesListClient() {
 
   return (
     <div className="space-y-4">
-      {/* Filtros */}
+      {/* Filtros — fila 1: búsqueda + estado + acciones */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -226,6 +261,63 @@ export function LicitacionesListClient() {
           )}
           {exportando ? "Exportando..." : "Exportar CSV"}
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => dispararSync()}
+          disabled={sincronizando || syncCooldownActivo}
+          className="shrink-0"
+          title="Consultar nuevas licitaciones desde ChileCompra"
+        >
+          <RefreshCw
+            className={`mr-2 h-4 w-4 ${sincronizando || syncCooldownActivo ? "animate-spin" : ""}`}
+          />
+          {sincronizando || syncCooldownActivo ? "Actualizando..." : "Actualizar"}
+        </Button>
+      </div>
+
+      {/* Filtros — fila 2: rubro + meta de actualización */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Select
+          value={unspsc || "todos"}
+          onValueChange={(val) => {
+            setUnspsc(val === "todos" ? "" : val)
+            setPage(1)
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-72">
+            <SelectValue placeholder="Todos los rubros" />
+          </SelectTrigger>
+          <SelectContent className="max-h-72">
+            <SelectItem value="todos">Todos los rubros</SelectItem>
+            {catalogosUnspsc?.items.map((seg) => (
+              <SelectGroup key={seg.codigo}>
+                <SelectLabel className="text-xs text-muted-foreground">
+                  {seg.codigo} — {seg.nombre}
+                </SelectLabel>
+                <SelectItem value={seg.codigo} className="font-medium">
+                  {seg.nombre}
+                </SelectItem>
+                {seg.familias.map((fam) => (
+                  <SelectItem
+                    key={fam.codigo}
+                    value={fam.codigo}
+                    className="pl-6 text-sm text-muted-foreground"
+                  >
+                    {fam.nombre}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {ultimaActualizacion && (
+          <p className="text-xs text-muted-foreground sm:ml-auto">
+            Actualizado{" "}
+            {formatDistanceToNow(ultimaActualizacion, { addSuffix: true, locale: es })}
+          </p>
+        )}
       </div>
 
       {/* Tabla */}

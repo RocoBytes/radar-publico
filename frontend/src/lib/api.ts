@@ -461,6 +461,10 @@ export async function getCatalogosUnspsc(): Promise<CatalogosUnspscResponse> {
   return apiFetch<CatalogosUnspscResponse>("/catalogos/unspsc")
 }
 
+export async function triggerSyncLicitaciones(): Promise<{ status: string; message: string }> {
+  return apiFetch<{ status: string; message: string }>("/sync/licitaciones", { method: "POST" })
+}
+
 // ---- Intereses ----
 
 export async function getIntereses(): Promise<InteresListResponse> {
