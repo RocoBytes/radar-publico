@@ -2,6 +2,7 @@
 
 Solo encola la tarea — el resultado llega en background via Celery.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
