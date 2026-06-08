@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -44,6 +45,7 @@ interface ErrorResponse {
 
 export function ChangePasswordForm() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const form = useForm<ChangePasswordFormValues>({
@@ -82,7 +84,8 @@ export function ChangePasswordForm() {
     }
 
     toast.success("Contraseña actualizada correctamente")
-    router.push("/dashboard")
+    await queryClient.invalidateQueries({ queryKey: ["me"] })
+    router.push("/onboarding")
   }
 
   return (
