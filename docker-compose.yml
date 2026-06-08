@@ -135,6 +135,7 @@ services:
       R2_ENDPOINT: ${R2_ENDPOINT}
       ENVIRONMENT: development
       LOG_LEVEL: INFO
+      CELERY_WORKER_RUNNING: "1"
     volumes:
       - ./backend:/app
       - /app/.venv  # volumen anónimo: preserva el venv construido en la imagen
@@ -174,6 +175,7 @@ services:
       SCRAPING_DELAY_MS: "2000"
       ENVIRONMENT: development
       LOG_LEVEL: INFO
+      CELERY_WORKER_RUNNING: "1"
     volumes:
       - ./backend:/app
       - /app/.venv

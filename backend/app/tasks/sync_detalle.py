@@ -575,6 +575,7 @@ async def _run(
     retry_backoff=True,
     max_retries=3,
     acks_late=True,
+    rate_limit="30/m",  # 30/min x 4 workers = 120/min total - respeta cuota API
 )
 def sync_detalle_licitacion(self: Any, codigo: str) -> dict[str, int]:
     """Sincroniza el detalle completo de una licitación desde ChileCompra.
