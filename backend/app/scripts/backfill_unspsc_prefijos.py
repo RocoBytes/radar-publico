@@ -24,8 +24,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+from typing import Any, cast
 
 from sqlalchemy import text
+from sqlalchemy.engine import CursorResult
 import structlog
 
 logger = structlog.get_logger()
@@ -110,7 +112,7 @@ async def _run(batch_size: int, dry_run: bool) -> None:
     if batch_size == 0:
         # Una sola query — simple y eficiente para tablas pequeñas/medianas
         async with AsyncSessionLocal() as session:
-            result = await session.execute(text(_BULK_SQL))
+            result = cast(CursorResult[Any], await session.execute(text(_BULK_SQL)))
             await session.commit()
         logger.info("backfill_unspsc_prefijos_ok", actualizadas=result.rowcount)
         print(f"Backfill completado: {result.rowcount} licitaciones actualizadas.")
@@ -121,7 +123,10 @@ async def _run(batch_size: int, dry_run: bool) -> None:
     batch_num = 0
     while True:
         async with AsyncSessionLocal() as session:
-            result = await session.execute(text(_BATCH_SQL), {"batch_size": batch_size})
+            result = cast(
+                CursorResult[Any],
+                await session.execute(text(_BATCH_SQL), {"batch_size": batch_size}),
+            )
             await session.commit()
 
         rows = result.rowcount

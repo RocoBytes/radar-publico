@@ -60,9 +60,7 @@ async def _limpieza(db_session: AsyncSession) -> None:  # type: ignore[misc]
         # borrar los códigos mismos — previene FK violation por datos residuales
         # de otros módulos de test que usan los mismos códigos UNSPSC.
         await db_session.execute(
-            delete(LicitacionItem).where(
-                LicitacionItem.unspsc_codigo.in_(["73101500", "80101500"])
-            )
+            delete(LicitacionItem).where(LicitacionItem.unspsc_codigo.in_(["73101500", "80101500"]))
         )
         await db_session.execute(delete(Unspsc).where(Unspsc.codigo.in_(["73101500", "80101500"])))
         await db_session.commit()
